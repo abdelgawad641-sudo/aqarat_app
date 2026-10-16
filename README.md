@@ -1,6 +1,6 @@
-# real_estate_app_fix
+# aqarat_app
 
-A new Flutter project.
+تطبيق إدارة العقارات (Flutter Project).
 
 ## Getting Started
 
