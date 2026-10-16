@@ -17,7 +17,7 @@ import 'screens/09_general_report_screen.dart';
 import 'screens/about_screen.dart'; // استيراد شاشة حول المنظومة والشرح
 
 void main() async {
-  // التعديل المُضاف: التأكد من تهيئة ربط الفلاتر قبل تشغيل التطبيق لمنع أي Crash مفاجئ
+  // التأكد من تهيئة ربط الفلاتر قبل تشغيل التطبيق لمنع أي Crash مفاجئ
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const RealEstateApp());
 }
@@ -67,7 +67,6 @@ class _HomeScreenState extends State<HomeScreen> {
       String freq = await AppManagerService.getBackupFrequency();
       String email = await AppManagerService.getStoredEmail();
 
-      // التأكد من أن القيمة ضمن الخيارات المتاحة لمنع حدوث أي خطأ
       List<String> validFrequencies = ['يومياً', 'أسبوعياً', 'شهرياً', 'يدوياً'];
       if (!validFrequencies.contains(freq)) {
         freq = 'يدوياً';
@@ -202,14 +201,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showSettingsDialog(BuildContext context) {
-    // --- حماية إضافية: قفل إعدادات الضبط والترخيص في وجه الضيف فوراً ---
     if (SecurityManager.isGuest) {
       SecurityManager.showPermissionDeniedSnackBar(context, 'حساب ضيف: غير مسموح لك بالدخول إلى إعدادات المنظومة والضبط.');
       return;
     }
 
     final TextEditingController activationController = TextEditingController();
-    final TextEditingController wifiIpController = TextEditingController(); // خانة إدخال الـ IP اليدوي
+    final TextEditingController wifiIpController = TextEditingController();
     String myDeviceId = "CAPTAIN-PC-2026";
     String hardwareId = LicensingService.getDeviceHardwareId(myDeviceId);
     int remainingDays = LicensingService.getRemainingDays();
@@ -237,7 +235,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // عرض إيميل الشركة الرئيسي المربوط
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
@@ -262,8 +259,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 12),
                     const Divider(color: Colors.grey),
                     const SizedBox(height: 8),
-
-                    // إعدادات جدولة النسخ الاحتياطي
                     const Text('جدولة النسخ الاحتياطي التلقائي:', style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13)),
                     const SizedBox(height: 6),
                     DropdownButtonFormField<String>(
@@ -289,9 +284,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         }
                       },
                     ),
-
                     const SizedBox(height: 14),
-                    // أزرار النسخ الاحتياطي والاستعادة الفعلية
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue.shade800,
@@ -318,12 +311,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         setState(() {});
                       },
                     ),
-
                     const SizedBox(height: 14),
                     const Divider(color: Colors.grey),
                     const SizedBox(height: 8),
-
-                    // --- إعدادات الشبكة المحلية (الواي فاي) للربط بين الأجهزة مع خانة IP يدوي ---
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
@@ -347,7 +337,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             style: TextStyle(color: Colors.white70, fontSize: 11),
                           ),
                           const SizedBox(height: 10),
-                          // خانة إدخال الـ IP يدوياً
                           TextField(
                             controller: wifiIpController,
                             style: const TextStyle(color: Colors.white, fontSize: 12),
@@ -363,7 +352,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          // زر الاتصال اليدوي بالـ IP
                           ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.teal.shade800,
@@ -394,7 +382,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             },
                           ),
                           const SizedBox(height: 6),
-                          // زر الفحص التلقائي الأصلي
                           ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.green.shade800,
@@ -416,12 +403,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                     ),
-
                     const SizedBox(height: 14),
                     const Divider(color: Colors.grey),
                     const SizedBox(height: 8),
-
-                    // قسم إدارة التراخيص مع زر النسخ السريع لكود الجهاز
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
@@ -585,14 +569,12 @@ class _HomeScreenState extends State<HomeScreen> {
           title: const Text('الصفحة الرئيسية | منظومة الكابتن لإدارة العقارات', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           centerTitle: true,
           actions: [
-            // --- زر إضافة موظف (يظهر حصرياً للمدير فقط) ---
             if (SecurityManager.currentUserRole == 'مدير')
               IconButton(
                 icon: const Icon(Icons.person_add_alt_1, color: Colors.greenAccent, size: 26),
                 tooltip: 'إضافة موظف جديد للفريق',
                 onPressed: () => _showAddEmployeeDialog(context),
               ),
-            // --- زر حول المنظومة وشرح العمل الجديد (متاح للجميع) ---
             IconButton(
               icon: const Icon(Icons.info_outline, color: Colors.cyanAccent, size: 26),
               tooltip: 'حول المنظومة وشرح العمل',
@@ -603,13 +585,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
-            // --- زر إعدادات المنظومة والضبط (مقفول تماماً في وجه الضيف) ---
             IconButton(
               icon: const Icon(Icons.settings, color: Colors.amber, size: 26),
               tooltip: 'إعدادات المنظومة والضبط',
               onPressed: () => _showSettingsDialog(context),
             ),
-            // --- زر الخروج الآمن (متاح للجميع) ---
             IconButton(
               icon: const Icon(Icons.logout, color: Colors.redAccent, size: 26),
               tooltip: 'تسجيل الخروج',
@@ -647,13 +627,12 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(width: 8),
           ],
         ),
-        // قفل الصفحة الرئيسية بالكامل للضيف مع السماح بالتمرير (السكرول) صعوداً وهبوطاً
         body: GuestReadOnlyWrapper(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
-                // --- شريط حالة الترخيص العلوي البارز ---
+                // --- شريط حالة الترخيص العلوي البارز (مُعدل ومحاط بـ Expanded لمنع أي Overflow) ---
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -671,14 +650,18 @@ class _HomeScreenState extends State<HomeScreen> {
                         size: 20,
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        LicensingService.isActivated
-                            ? 'حالة النظام: مُفعل بشكل دائم'
-                            : 'النسخة تجريبية (متبقي $remainingDays يوم من الفترة التجريبية 30 يوم)',
-                        style: TextStyle(
-                          color: LicensingService.isActivated ? Colors.greenAccent : Colors.amberAccent,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
+                      Expanded(
+                        child: Text(
+                          LicensingService.isActivated
+                              ? 'حالة النظام: مُفعل بشكل دائم'
+                              : 'النسخة تجريبية (متبقي $remainingDays يوم من التجربة)',
+                          style: TextStyle(
+                            color: LicensingService.isActivated ? Colors.greenAccent : Colors.amberAccent,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
                         ),
                       ),
                     ],
@@ -703,12 +686,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       prefixIcon: const Icon(Icons.search, color: Colors.cyanAccent),
                       suffixIcon: _searchController.text.isNotEmpty
                           ? IconButton(
-                              icon: const Icon(Icons.clear, color: Colors.redAccent),
-                              onPressed: () {
-                                _searchController.clear();
-                                _onSearchChanged('');
-                              },
-                            )
+                        icon: const Icon(Icons.clear, color: Colors.redAccent),
+                        onPressed: () {
+                          _searchController.clear();
+                          _onSearchChanged('');
+                        },
+                      )
                           : null,
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                       filled: true,
@@ -720,132 +703,132 @@ class _HomeScreenState extends State<HomeScreen> {
                 Expanded(
                   child: _isSearching
                       ? Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 600),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF181818),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.cyanAccent.withOpacity(0.4)),
-                              ),
-                              child: Column(
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.all(12.0),
-                                    child: Text(
-                                      'نتائج البحث الفوري (${_searchResults.length})',
-                                      style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 15),
-                                    ),
-                                  ),
-                                  const Divider(color: Colors.grey, height: 1),
-                                  Expanded(
-                                    child: _searchResults.isEmpty
-                                        ? const Center(
-                                            child: Text(
-                                              'لا توجد نتائج مطابقة لما تكتبه حالياً',
-                                              style: TextStyle(color: Colors.white70, fontSize: 14),
-                                            ),
-                                          )
-                                        : ListView.builder(
-                                            itemCount: _searchResults.length,
-                                            itemBuilder: (context, index) {
-                                              final result = _searchResults[index];
-                                              final section = result['section'];
-                                              final data = result['data'] as Map<String, dynamic>;
-
-                                              return Card(
-                                                color: const Color(0xFF252525),
-                                                margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(8),
-                                                  side: BorderSide(color: Colors.cyanAccent.withOpacity(0.3)),
-                                                ),
-                                                child: Padding(
-                                                  padding: const EdgeInsets.all(10.0),
-                                                  child: Column(
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                                    children: [
-                                                      Row(
-                                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                        children: [
-                                                          Text(
-                                                            'القسم: $section',
-                                                            style: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold, fontSize: 13),
-                                                          ),
-                                                          if (data.containsKey('كود الوحدة'))
-                                                            Container(
-                                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                              decoration: BoxDecoration(color: Colors.blue.shade800, borderRadius: BorderRadius.circular(4)),
-                                                              child: Text('الكود: ${data['كود الوحدة']}', style: const TextStyle(color: Colors.white, fontSize: 11)),
-                                                            ),
-                                                        ],
-                                                      ),
-                                                      const SizedBox(height: 6),
-                                                      ...data.entries.take(4).map((entry) => Padding(
-                                                            padding: const EdgeInsets.symmetric(vertical: 2),
-                                                            child: Text(
-                                                              '${entry.key}: ${entry.value}',
-                                                              style: const TextStyle(color: Colors.white70, fontSize: 12),
-                                                            ),
-                                                          )),
-                                                    ],
-                                                  ),
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                  ),
-                                ],
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 600),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF181818),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.cyanAccent.withOpacity(0.4)),
+                        ),
+                        child: Column(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Text(
+                                'نتائج البحث الفوري (${_searchResults.length})',
+                                style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 15),
                               ),
                             ),
-                          ),
-                        )
-                      : Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 700),
-                            child: LayoutBuilder(
-                              builder: (context, constraints) {
-                                int crossAxisCount = constraints.maxWidth > 550 ? 3 : 2;
+                            const Divider(color: Colors.grey, height: 1),
+                            Expanded(
+                              child: _searchResults.isEmpty
+                                  ? const Center(
+                                child: Text(
+                                  'لا توجد نتائج مطابقة لما تكتبه حالياً',
+                                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                                ),
+                              )
+                                  : ListView.builder(
+                                itemCount: _searchResults.length,
+                                itemBuilder: (context, index) {
+                                  final result = _searchResults[index];
+                                  final section = result['section'];
+                                  final data = result['data'] as Map<String, dynamic>;
 
-                                return GridView.builder(
-                                  itemCount: menuItems.length,
-                                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: crossAxisCount,
-                                    crossAxisSpacing: 14,
-                                    mainAxisSpacing: 14,
-                                    childAspectRatio: 1.5,
-                                  ),
-                                  itemBuilder: (context, index) {
-                                    final item = menuItems[index];
-                                    return ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: item['color'],
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                        elevation: 4,
-                                      ),
-                                      onPressed: () => Navigator.push(
-                                        context,
-                                        MaterialPageRoute(builder: (context) => item['screen']),
-                                      ),
+                                  return Card(
+                                    color: const Color(0xFF252525),
+                                    margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      side: BorderSide(color: Colors.cyanAccent.withOpacity(0.3)),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(10.0),
                                       child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Icon(item['icon'], size: 32, color: Colors.white),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            item['title'],
-                                            style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-                                            textAlign: TextAlign.center,
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(
+                                                'القسم: $section',
+                                                style: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold, fontSize: 13),
+                                              ),
+                                              if (data.containsKey('كود الوحدة'))
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                  decoration: BoxDecoration(color: Colors.blue.shade800, borderRadius: BorderRadius.circular(4)),
+                                                  child: Text('الكود: ${data['كود الوحدة']}', style: const TextStyle(color: Colors.white, fontSize: 11)),
+                                                ),
+                                            ],
                                           ),
+                                          const SizedBox(height: 6),
+                                          ...data.entries.take(4).map((entry) => Padding(
+                                            padding: const EdgeInsets.symmetric(vertical: 2),
+                                            child: Text(
+                                              '${entry.key}: ${entry.value}',
+                                              style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                            ),
+                                          )),
                                         ],
                                       ),
-                                    );
-                                  },
-                                );
-                              },
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
-                          ),
+                          ],
                         ),
+                      ),
+                    ),
+                  )
+                      : Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 700),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          int crossAxisCount = constraints.maxWidth > 550 ? 3 : 2;
+
+                          return GridView.builder(
+                            itemCount: menuItems.length,
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: crossAxisCount,
+                              crossAxisSpacing: 14,
+                              mainAxisSpacing: 14,
+                              childAspectRatio: 1.5,
+                            ),
+                            itemBuilder: (context, index) {
+                              final item = menuItems[index];
+                              return ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: item['color'],
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  elevation: 4,
+                                ),
+                                onPressed: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => item['screen']),
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(item['icon'], size: 32, color: Colors.white),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      item['title'],
+                                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),

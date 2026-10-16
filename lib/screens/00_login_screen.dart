@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../main.dart';
 import '../services/app_manager_service.dart';
 import '../services/security_manager.dart'; // استيراد ملف الأمان لضبط الدور
+import '../services/licensing_service.dart'; // استيراد ملف الترخيص لتفعيل الأدمن
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -102,7 +103,8 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    if ((username == 'admin' || username == 'programmer') && _appUsers[username]!['password'] == password) {
+    // التحقق الفعلي من حساب الأدمن عبر خدمة LicensingService وتخطي العداد وتفعيل النسخة البرو
+    if (LicensingService.checkMasterAdmin(username, password)) {
       _executeSuccessfulLogin(username, 'admin@gmail.com');
       return;
     }
@@ -156,7 +158,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('مرحباً بك يا $fName ($role)'), backgroundColor: isGuest ? Colors.blue : Colors.green),
+        SnackBar(content: Text('مرحباً بك يا $fName ($role) - تم التفعيل بنجاح'), backgroundColor: isGuest ? Colors.blue : Colors.green),
       );
 
       Navigator.pushReplacement(
