@@ -16,12 +16,22 @@ import 'screens/06_inspections_screen.dart';
 import 'screens/07_completed_operations_screen.dart';
 import 'screens/08_accounts_screen.dart';
 import 'screens/09_general_report_screen.dart';
-import 'screens/10_archive_screen.dart'; // تم إضافة استيراد شاشة الأرشيف الصحيحة
+import 'screens/10_archive_screen.dart';
 import 'screens/about_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // 1. تهيئة دعم الأوفلاين والسحابة فوراً عند فتح التطبيق
+  CloudSyncService.initOfflineSupport();
+
+  // 2. تحميل حالة الترخيص والبيانات المحلية
   await LicensingService.loadLicenseStatus();
+  await LocalStorageService.loadLocally();
+
+  // 3. سحب أحدث نسخة سحابية تلقائياً في الخلفية فور الاتصال بالنت
+  CloudSyncService.syncFromCloud(isAuto: true);
+
   runApp(const Aqarat());
 }
 
@@ -240,6 +250,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   };
 
                   await LocalStorageService.saveAppUsers(LoginScreen.appUsers);
+                  await CloudSyncService.saveAndSyncInstant();
 
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -412,6 +423,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         label: const Text('استعادة البيانات من ملف', style: TextStyle(color: Colors.white, fontSize: 13)),
                         onPressed: () async {
                           await FileBackupService.restoreFromFile(context);
+                          await CloudSyncService.saveAndSyncInstant();
                           setState(() {});
                         },
                       ),
@@ -624,7 +636,6 @@ class _HomeScreenState extends State<HomeScreen> {
       {'title': 'العمليات المكتملة', 'icon': Icons.task_alt, 'color': Colors.indigo.shade700, 'screen': const CompletedOperationsScreen(), 'allowedRoles': ['مدير', 'نائب مدير', 'مدخل بيانات']},
       {'title': 'حسابات المنظومة', 'icon': Icons.account_balance_wallet, 'color': Colors.brown.shade700, 'screen': const AccountsScreen(), 'allowedRoles': ['مدير']},
       {'title': 'التقرير العام', 'icon': Icons.bar_chart, 'color': Colors.blueGrey.shade700, 'screen': const GeneralReportScreen(), 'allowedRoles': ['مدير']},
-      // تم تعديل شاشة الأرشيف لفتح الأرشيف الصحيح بدلاً من العمليات المكتملة
       {'title': 'الأرشيف', 'icon': Icons.archive, 'color': Colors.blueGrey.shade900, 'screen': const ArchiveScreen(), 'allowedRoles': ['مدير', 'نائب مدير']},
     ];
 

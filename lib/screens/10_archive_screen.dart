@@ -45,14 +45,12 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
 
     if (rawArchived != null) {
       for (var item in rawArchived) {
-        if (item is Map) {
-          Map<String, String> cleanedMap = {};
-          item.forEach((key, value) {
-            cleanedMap[key.toString()] = value?.toString() ?? '';
-          });
-
-          archiveRows.add(cleanedMap);
-        }
+        Map<String, String> cleanedMap = {};
+        Map mapItem = Map.from(item);
+        mapItem.forEach((key, value) {
+          cleanedMap[key.toString()] = value.toString();
+        });
+        archiveRows.add(cleanedMap);
       }
     }
 
@@ -301,7 +299,7 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
                   decoration: BoxDecoration(
                     color: const Color(0xFF1E1E1E),
                     borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: Colors.purple.withOpacity(0.4)),
+                    border: Border.all(color: Colors.purple.withValues(alpha: 0.4)),
                   ),
                   child: LayoutBuilder(
                     builder: (context, constraints) {
@@ -360,11 +358,8 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
                                               var originalArchive = AppData.storage['أرشيف العمليات'];
                                               if (originalArchive != null) {
                                                 originalArchive.removeWhere((item) {
-                                                  if (item is Map) {
-                                                    return (item['كود الوحدة'] == row['كود الوحدة']) &&
-                                                        ((item['إسم العميل'] ?? item['اسم العميل'] ?? '') == cName);
-                                                  }
-                                                  return false;
+                                                  return (item['كود الوحدة'] == row['كود الوحدة']) &&
+                                                      ((item['إسم العميل'] ?? item['اسم العميل'] ?? '') == cName);
                                                 });
                                                 AppData.storage['أرشيف العمليات'] = originalArchive;
                                               }

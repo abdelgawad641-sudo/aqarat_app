@@ -28,12 +28,12 @@ class _CompletedOperationsScreenState extends State<CompletedOperationsScreen> {
 
     List<Map<String, String>> operationsList = [];
     var stored = AppData.storage['العمليات التامة'];
-    if (stored != null && stored is List) {
-      for (var e in stored) {
-        if (e is Map) {
+    if (stored != null) {
+      for (dynamic e in stored) {
+        if (e != null) {
           Map<String, String> mappedItem = {};
           e.forEach((key, value) {
-            mappedItem[key.toString()] = value?.toString() ?? '';
+            mappedItem[key.toString()] = value.toString();
           });
           operationsList.add(mappedItem);
         }
@@ -308,9 +308,9 @@ class _CompletedOperationsScreenState extends State<CompletedOperationsScreen> {
 
                                                         List<String> phoneNumbers = [];
                                                         var clientsList = AppData.storage['العملاء'];
-                                                        if (clientsList != null && clientsList is List) {
+                                                        if (clientsList != null) {
                                                           for (var c in clientsList) {
-                                                            if (c is Map) {
+                                                            if (true) {
                                                               String cName = (c['إسم العميل'] ?? c['اسم العميل'] ?? c['الاسم'] ?? '').toString().trim();
 
                                                               if (cName.isNotEmpty && rawClientName.isNotEmpty) {
@@ -328,7 +328,7 @@ class _CompletedOperationsScreenState extends State<CompletedOperationsScreen> {
 
                                                           if (phoneNumbers.isEmpty && clientsList.isNotEmpty) {
                                                             var firstClient = clientsList.first;
-                                                            if (firstClient is Map) {
+                                                            if (true) {
                                                               String p1 = (firstClient['رقم التليفون 1'] ?? firstClient['رقم التليفون1'] ?? firstClient['رقم الهاتف'] ?? '').toString().trim();
                                                               String p2 = (firstClient['رقم التليفون 2'] ?? firstClient['رقم التليفون2'] ?? firstClient['الموبايل'] ?? '').toString().trim();
                                                               if (p1.isNotEmpty && p1 != '-' && p1 != 'null') phoneNumbers.add(p1);
@@ -341,7 +341,7 @@ class _CompletedOperationsScreenState extends State<CompletedOperationsScreen> {
 
                                                         String propertyType = '-';
                                                         for (String key in ['المعروض للبيع', 'العقارات المعروضة للبيع', 'بيانات البيع', 'المعروض للإيجار', 'العقارات المعروضة للإيجار', 'بيانات الإيجار', 'المعاينات']) {
-                                                          if (AppData.storage.containsKey(key) && AppData.storage[key] is List) {
+                                                          if (AppData.storage.containsKey(key) && AppData.storage[key] is Iterable) {
                                                             List list = AppData.storage[key] as List;
                                                             for (var prop in list) {
                                                               if (prop is Map && ((prop['كود الوحدة'] ?? prop['كود']) == unitCode)) {
@@ -363,7 +363,7 @@ class _CompletedOperationsScreenState extends State<CompletedOperationsScreen> {
                                                         removedItem['قيمة العمولة'] = commission.toStringAsFixed(0);
 
                                                         var archiveList = AppData.storage['أرشيف العمليات'];
-                                                        if (archiveList != null && archiveList is List) {
+                                                        if (archiveList != null) {
                                                           archiveList.add(removedItem);
                                                           AppData.storage['أرشيف العمليات'] = archiveList;
                                                         }
