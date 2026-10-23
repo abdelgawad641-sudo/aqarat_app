@@ -30,7 +30,7 @@ android {
         }
     }
 
-    // 2. إعدادات شهادة التوقيع
+    // 2. إعدادات شهادة التوقيع لتحديث التطبيق مباشرة فوق النسخة القديمة
     signingConfigs {
         create("release") {
             keyAlias = keystoreProperties["keyAlias"] as String?
@@ -52,8 +52,12 @@ android {
 
     buildTypes {
         release {
-            // استخدام توقيع debug الافتراضي لضمان التجميع بنجاح أونلاين على Codemagic
-            signingConfig = signingConfigs.getByName("debug")
+            // استخدام توقيع الـ release الحقيقي إذا كان موجوداً لضمان التثبيت فوق النسخة القديمة
+            signingConfig = if (keystorePropertiesFile.exists() && keystoreProperties["storeFile"] != null) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
 
             isMinifyEnabled = false
             isShrinkResources = false
@@ -68,3 +72,6 @@ flutter {
 dependencies {
     implementation("androidx.multidex:multidex:2.0.1")
 }
+```[cite: 7]
+
+احفظ الملف بـ `Ctrl + S`، وこのように رجعنا النسخة الكاملة بكامل صلاحياتها وإعداداتها السحابية وتوقيعها الصحيح!
