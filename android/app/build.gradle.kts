@@ -1,4 +1,14 @@
-﻿plugins {
+import java.io.FileInputStream
+import java.util.Properties
+
+// 1. قراءة بيانات التوقيع من ملف key.properties
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+
+plugins {
     id("com.android.application")
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
@@ -20,6 +30,16 @@ android {
         }
     }
 
+    // 2. إعدادات شهادة التوقيع
+    signingConfigs {
+        create("release") {
+            keyAlias = keystoreProperties["keyAlias"] as String?
+            keyPassword = keystoreProperties["keyPassword"] as String?
+            storeFile = keystoreProperties["storeFile"]?.let { file(it) }
+            storePassword = keystoreProperties["storePassword"] as String?
+        }
+    }
+
     defaultConfig {
         applicationId = "com.captain.aqarat"
         minSdk = flutter.minSdkVersion
@@ -32,9 +52,11 @@ android {
 
     buildTypes {
         release {
+            // 3. ربط التوقيع بنسخة الـ Release
+            signingConfig = signingConfigs.getByName("release")
+
             isMinifyEnabled = false
             isShrinkResources = false
-            signingConfig = signingConfigs.getByName("debug")
         }
     }
 }

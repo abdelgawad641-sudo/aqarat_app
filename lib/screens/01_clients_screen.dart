@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import '../app_data.dart';
+import '../services/local_storage_service.dart';
+import '../services/cloud_sync_service.dart';
 import '02_brokers_screen.dart';
 import '03_customer_requests_screen.dart';
 import '04_for_sale_screen.dart';
 import '05_for_rent_screen.dart';
 import '06_inspections_screen.dart';
 import '07_completed_operations_screen.dart';
-import '08_accounts_screen.dart';
-import '09_general_report_screen.dart';
 
 class ClientsScreen extends StatefulWidget {
   const ClientsScreen({super.key});
@@ -111,7 +111,7 @@ class _ClientsScreenState extends State<ClientsScreen> {
     }
   }
 
-  void _saveClient(BuildContext dialogContext) {
+  void _saveClient(BuildContext dialogContext) async {
     String p1 = phone1Controller.text.trim();
     String p2 = phone2Controller.text.trim();
 
@@ -155,10 +155,15 @@ class _ClientsScreenState extends State<ClientsScreen> {
         'ملاحظات عامة': notesController.text.trim().isEmpty ? '-' : notesController.text.trim(),
       });
     });
+
+    // الحفظ المحلي التلقائي + الرفع الفوري في الخلفية (Auto-Sync)
+    await LocalStorageService.saveLocally();
+    CloudSyncService.syncToCloud(isAuto: true);
+
     Navigator.pop(dialogContext);
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('تم حفظ العميل بنجاح'), backgroundColor: Colors.green),
+      const SnackBar(content: Text('تم حفظ العميل ومزامנתه سحابياً بنجاح'), backgroundColor: Colors.green),
     );
   }
 
@@ -428,18 +433,6 @@ class _ClientsScreenState extends State<ClientsScreen> {
                       onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const CompletedOperationsScreen())),
                       child: const Text('العمليات', style: TextStyle(color: Colors.white, fontSize: 11)),
                     ),
-                    const SizedBox(width: 4),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF333333)),
-                      onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AccountsScreen())),
-                      child: const Text('الحسابات', style: TextStyle(color: Colors.white, fontSize: 11)),
-                    ),
-                    const SizedBox(width: 4),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF333333)),
-                      onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const GeneralReportScreen())),
-                      child: const Text('التقرير', style: TextStyle(color: Colors.white, fontSize: 11)),
-                    ),
                   ],
                 ),
               ),
@@ -524,12 +517,16 @@ class _ClientsScreenState extends State<ClientsScreen> {
                                       DataCell(
                                         IconButton(
                                           icon: const Icon(Icons.delete_forever, color: Colors.redAccent, size: 20),
-                                          onPressed: () {
+                                          onPressed: () async {
                                             setState(() {
                                               clientsList.removeAt(index);
                                             });
+                                            // الحفظ المحلي التلقائي + الرفع الفوري في الخلفية عند الحذف
+                                            await LocalStorageService.saveLocally();
+                                            CloudSyncService.syncToCloud(isAuto: true);
+
                                             ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(content: Text('تم حذف العميل بنجاح'), backgroundColor: Colors.orange),
+                                              const SnackBar(content: Text('تم حذف العميل وتحديث السحابة بنجاح'), backgroundColor: Colors.orange),
                                             );
                                           },
                                         ),

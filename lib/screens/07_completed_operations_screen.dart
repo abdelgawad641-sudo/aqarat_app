@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import '../app_data.dart';
+import '../services/local_storage_service.dart';
+import '../services/cloud_sync_service.dart';
 import '01_clients_screen.dart';
 import '02_brokers_screen.dart';
 import '03_customer_requests_screen.dart';
 import '04_for_sale_screen.dart';
 import '05_for_rent_screen.dart';
 import '06_inspections_screen.dart';
-import '08_accounts_screen.dart';
-import '09_general_report_screen.dart';
-import '10_archive_screen.dart';
 
 class CompletedOperationsScreen extends StatefulWidget {
   const CompletedOperationsScreen({super.key});
@@ -32,7 +31,11 @@ class _CompletedOperationsScreenState extends State<CompletedOperationsScreen> {
     if (stored != null && stored is List) {
       for (var e in stored) {
         if (e is Map) {
-          operationsList.add(Map<String, String>.from(e));
+          Map<String, String> mappedItem = {};
+          e.forEach((key, value) {
+            mappedItem[key.toString()] = value?.toString() ?? '';
+          });
+          operationsList.add(mappedItem);
         }
       }
     }
@@ -72,10 +75,10 @@ class _CompletedOperationsScreenState extends State<CompletedOperationsScreen> {
                     const SizedBox(width: 8),
                     IconButton(
                       icon: const Icon(Icons.print, color: Colors.cyanAccent, size: 24),
-                      tooltip: 'طباعة التقرير',
+                      tooltip: 'طباعة التقرير الفعلي',
                       onPressed: () {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('جاري إعداد تقرير العمليات التامة للطباعة...')),
+                          const SnackBar(content: Text('جاري طباعة تقرير العمليات التامة الحالي...'), backgroundColor: Colors.cyan),
                         );
                       },
                     ),
@@ -84,7 +87,7 @@ class _CompletedOperationsScreenState extends State<CompletedOperationsScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF2C2C2C),
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                       ),
                       onPressed: () {
                         Navigator.pushReplacement(
@@ -92,24 +95,8 @@ class _CompletedOperationsScreenState extends State<CompletedOperationsScreen> {
                           MaterialPageRoute(builder: (context) => const InspectionsScreen()),
                         );
                       },
-                      icon: const Icon(Icons.arrow_right_rounded, color: Colors.amberAccent, size: 24),
-                      label: const Text('الصفحة السابقة', style: TextStyle(fontSize: 12)),
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2C2C2C),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      ),
-                      onPressed: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (context) => const AccountsScreen()),
-                        );
-                      },
-                      icon: const Icon(Icons.arrow_left_rounded, color: Colors.amberAccent, size: 24),
-                      label: const Text('الصفحة التالية', style: TextStyle(fontSize: 12)),
+                      icon: const Icon(Icons.arrow_right_rounded, color: Colors.amberAccent, size: 22),
+                      label: const Text('الصفحة السابقة', style: TextStyle(fontSize: 11)),
                     ),
                   ],
                 ),
@@ -162,30 +149,6 @@ class _CompletedOperationsScreenState extends State<CompletedOperationsScreen> {
                       style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade700),
                       onPressed: () {},
                       child: const Text('العمليات', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                    ),
-                    const SizedBox(width: 4),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF333333)),
-                      onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AccountsScreen())),
-                      child: const Text('الحسابات', style: TextStyle(color: Colors.white, fontSize: 11)),
-                    ),
-                    const SizedBox(width: 4),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF333333)),
-                      onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const GeneralReportScreen())),
-                      child: const Text('التقرير', style: TextStyle(color: Colors.white, fontSize: 11)),
-                    ),
-                    const SizedBox(width: 4),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.amber.shade800),
-                      onPressed: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (context) => const ArchiveScreen()),
-                        );
-                      },
-                      icon: const Icon(Icons.archive, color: Colors.white, size: 14),
-                      label: const Text('الأرشيف', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
@@ -256,11 +219,13 @@ class _CompletedOperationsScreenState extends State<CompletedOperationsScreen> {
                                           style: const TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold, fontSize: 13),
                                           decoration: const InputDecoration(border: InputBorder.none),
                                           keyboardType: TextInputType.number,
-                                          onChanged: (val) {
+                                          onChanged: (val) async {
                                             setState(() {
                                               item['سعر التعاقد النهائي'] = val;
                                               AppData.storage['العمليات التامة'] = operationsList;
                                             });
+                                            await LocalStorageService.saveLocally();
+                                            CloudSyncService.syncToCloud(isAuto: true);
                                           },
                                         ),
                                       ),
@@ -270,11 +235,13 @@ class _CompletedOperationsScreenState extends State<CompletedOperationsScreen> {
                                           style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 13),
                                           decoration: const InputDecoration(border: InputBorder.none),
                                           keyboardType: TextInputType.number,
-                                          onChanged: (val) {
+                                          onChanged: (val) async {
                                             setState(() {
                                               item['المبلغ المدفوع'] = val;
                                               AppData.storage['العمليات التامة'] = operationsList;
                                             });
+                                            await LocalStorageService.saveLocally();
+                                            CloudSyncService.syncToCloud(isAuto: true);
                                           },
                                         ),
                                       ),
@@ -287,11 +254,13 @@ class _CompletedOperationsScreenState extends State<CompletedOperationsScreen> {
                                           style: const TextStyle(color: Colors.white, fontSize: 13),
                                           decoration: const InputDecoration(border: InputBorder.none),
                                           keyboardType: TextInputType.number,
-                                          onChanged: (val) {
+                                          onChanged: (val) async {
                                             setState(() {
                                               item['نسبة العمولة'] = val;
                                               AppData.storage['العمليات التامة'] = operationsList;
                                             });
+                                            await LocalStorageService.saveLocally();
+                                            CloudSyncService.syncToCloud(isAuto: true);
                                           },
                                         ),
                                       ),
@@ -307,11 +276,13 @@ class _CompletedOperationsScreenState extends State<CompletedOperationsScreen> {
                                                 Checkbox(
                                                   value: isAccountOnly,
                                                   activeColor: Colors.amber,
-                                                  onChanged: (val) {
+                                                  onChanged: (val) async {
                                                     setState(() {
                                                       item['isAccountOnly'] = (val ?? true).toString();
                                                       AppData.storage['العمليات التامة'] = operationsList;
                                                     });
+                                                    await LocalStorageService.saveLocally();
+                                                    CloudSyncService.syncToCloud(isAuto: true);
                                                   },
                                                 ),
                                                 const Text('حسابات', style: TextStyle(color: Colors.white, fontSize: 11)),
@@ -323,7 +294,7 @@ class _CompletedOperationsScreenState extends State<CompletedOperationsScreen> {
                                                 Checkbox(
                                                   value: isArchived,
                                                   activeColor: Colors.redAccent,
-                                                  onChanged: (val) {
+                                                  onChanged: (val) async {
                                                     setState(() {
                                                       bool newArchived = val ?? false;
                                                       item['isArchived'] = newArchived.toString();
@@ -397,35 +368,44 @@ class _CompletedOperationsScreenState extends State<CompletedOperationsScreen> {
                                                           AppData.storage['أرشيف العمليات'] = archiveList;
                                                         }
 
+                                                        // حذف الوحدة تماماً من شيتات البيع بأمان تام
                                                         for (String saleKey in ['المعروض للبيع', 'العقارات المعروضة للبيع', 'بيانات البيع']) {
                                                           if (AppData.storage.containsKey(saleKey) && AppData.storage[saleKey] is List) {
                                                             List list = AppData.storage[saleKey] as List;
-                                                            for (var prop in list) {
-                                                              if (prop is Map && (prop['كود الوحدة'] == unitCode || prop['كود'] == unitCode)) {
-                                                                prop['الحالة'] = 'تم البيع';
-                                                                prop['حالة العقار'] = 'تم البيع';
+                                                            list.removeWhere((prop) {
+                                                              if (prop is Map) {
+                                                                return (prop['كود الوحدة'] == unitCode || prop['كود'] == unitCode);
                                                               }
-                                                            }
+                                                              return false;
+                                                            });
                                                           }
                                                         }
+
+                                                        // حذف الوحدة تماماً من شيتات الإيجار بأمان تام
                                                         for (String rentKey in ['المعروض للإيجار', 'العقارات المعروضة للإيجار', 'بيانات الإيجار']) {
                                                           if (AppData.storage.containsKey(rentKey) && AppData.storage[rentKey] is List) {
                                                             List list = AppData.storage[rentKey] as List;
-                                                            for (var prop in list) {
-                                                              if (prop is Map && (prop['كود الوحدة'] == unitCode || prop['كود'] == unitCode)) {
-                                                                prop['الحالة'] = 'تم الإيجار';
-                                                                prop['حالة العقار'] = 'تم الإيجار';
+                                                            list.removeWhere((prop) {
+                                                              if (prop is Map) {
+                                                                return (prop['كود الوحدة'] == unitCode || prop['كود'] == unitCode);
                                                               }
-                                                            }
+                                                              return false;
+                                                            });
                                                           }
                                                         }
                                                       } else {
                                                         AppData.storage['العمليات التامة'] = operationsList;
                                                       }
                                                     });
-                                                    ScaffoldMessenger.of(context).showSnackBar(
-                                                      const SnackBar(content: Text('تم أرشفة العملية وجلب أرقام التليفونات من شيت العملاء بنجاح'), backgroundColor: Colors.blue),
-                                                    );
+
+                                                    await LocalStorageService.saveLocally();
+                                                    CloudSyncService.syncToCloud(isAuto: true);
+
+                                                    if (mounted) {
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        const SnackBar(content: Text('تم أرشفة العملية وجلب رقم الموبايل وحذفها من المعروضات بنجاح'), backgroundColor: Colors.blue),
+                                                      );
+                                                    }
                                                   },
                                                 ),
                                                 const Text('أرشيف', style: TextStyle(color: Colors.amberAccent, fontSize: 11)),

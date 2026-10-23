@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../app_data.dart';
 import '../app_dropdowns.dart';
+import '../services/local_storage_service.dart';
+import '../services/cloud_sync_service.dart';
 import '08_accounts_screen.dart';
 import '10_archive_screen.dart';
 
@@ -44,7 +46,6 @@ class _GeneralReportScreenState extends State<GeneralReportScreen> {
   Widget build(BuildContext context) {
     List<Map<String, String>> accountsRows = [];
 
-    // 1. العمليات التامة (الدخل من العمولات)
     List rawCompleted = (AppData.storage['العمليات التامة'] as List?) ?? [];
     for (var item in rawCompleted) {
       if (item is Map) {
@@ -65,7 +66,6 @@ class _GeneralReportScreenState extends State<GeneralReportScreen> {
       }
     }
 
-    // 2. العمليات المؤرشفة
     List rawArchived = (AppData.storage['أرشيف العمليات'] as List?) ?? [];
     for (var item in rawArchived) {
       if (item is Map) {
@@ -86,7 +86,6 @@ class _GeneralReportScreenState extends State<GeneralReportScreen> {
       }
     }
 
-    // 3. المصروفات اليدوية المكتبية
     List rawExpenses = (AppData.storage['المصروفات'] as List?) ?? [];
     for (var item in rawExpenses) {
       if (item is Map) {
@@ -200,11 +199,15 @@ class _GeneralReportScreenState extends State<GeneralReportScreen> {
                     const SizedBox(width: 8),
                     IconButton(
                       icon: const Icon(Icons.print, color: Colors.cyanAccent, size: 24),
-                      tooltip: 'طباعة التقرير العام',
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('جاري إعداد التقرير للطباعة...')),
-                        );
+                      tooltip: 'طباعة التقرير الفعلي',
+                      onPressed: () async {
+                        await LocalStorageService.saveLocally();
+                        CloudSyncService.syncToCloud(isAuto: true);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('جاري طباعة التقرير العام الحالي وتحديث السحابة...'), backgroundColor: Colors.cyan),
+                          );
+                        }
                       },
                     ),
                     const SizedBox(width: 12),
@@ -276,8 +279,12 @@ class _GeneralReportScreenState extends State<GeneralReportScreen> {
                                 child: Text(month, style: const TextStyle(color: Colors.white)),
                               );
                             }).toList(),
-                            onChanged: (val) {
-                              if (val != null) setState(() => selectedMonth = val);
+                            onChanged: (val) async {
+                              if (val != null) {
+                                setState(() => selectedMonth = val);
+                                await LocalStorageService.saveLocally();
+                                CloudSyncService.syncToCloud(isAuto: true);
+                              }
                             },
                           ),
                         ],
@@ -304,8 +311,12 @@ class _GeneralReportScreenState extends State<GeneralReportScreen> {
                                 child: Text(year, style: const TextStyle(color: Colors.white)),
                               );
                             }).toList(),
-                            onChanged: (val) {
-                              if (val != null) setState(() => selectedYear = val);
+                            onChanged: (val) async {
+                              if (val != null) {
+                                setState(() => selectedYear = val);
+                                await LocalStorageService.saveLocally();
+                                CloudSyncService.syncToCloud(isAuto: true);
+                              }
                             },
                           ),
                         ],

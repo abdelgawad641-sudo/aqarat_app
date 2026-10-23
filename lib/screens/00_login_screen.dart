@@ -1,12 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../main.dart';
-import '../services/app_manager_service.dart';
-import '../services/security_manager.dart'; // استيراد ملف الأمان لضبط الدور
-import '../services/licensing_service.dart'; // استيراد ملف الترخيص لتفعيل الأدمن
+import '../services/local_storage_service.dart';
+import '../services/security_manager.dart';
+import '../services/licensing_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
+  static final Map<String, Map<String, String>> appUsers = {
+    'admin': {
+      'company': 'شركة ماهي البهوتي للاستثمار العقاري',
+      'firstName': 'الكابتن عبد الجواد',
+      'password': '1983',
+      'role': 'مدير',
+      'license': 'مدى الحياة',
+      'question': 'ما هي مدينة ميلادك؟',
+      'answer': 'القاهرة',
+      'email': 'admin@aqarat.com',
+      'personalGmail': '',
+    },
+    'programmer': {
+      'company': 'الدعم الفني المركزي',
+      'firstName': 'المبرمج الرئيسي',
+      'password': '1983',
+      'role': 'مدير النظام',
+      'license': 'مدى الحياة',
+      'question': 'ما هي مدينة ميلادك؟',
+      'answer': 'القاهرة',
+      'email': 'captain.support640@gmail.com',
+      'personalGmail': 'captain.support640@gmail.com',
+    }
+  };
+
+  static String mainCompanyName = 'شركة ماهي البهوتي للتسويق العقاري';
+  static String subAppName = 'منظومة الكابتن للتسويق العقاري';
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -17,13 +45,13 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _showPassword = false;
-  bool _rememberMe = false; // تفعيل مربع الحفظ
+  bool _rememberMe = false;
 
   final FocusNode _gmailFocus = FocusNode();
   final FocusNode _usernameFocus = FocusNode();
   final FocusNode _passwordFocus = FocusNode();
 
-  final TextEditingController _companyEmailController = TextEditingController(); // إيميل الشركة الموحد الجديد
+  final TextEditingController _companyEmailController = TextEditingController();
   final TextEditingController _companyNameController = TextEditingController();
   final TextEditingController _newFirstNameController = TextEditingController();
   final TextEditingController _newUsernameController = TextEditingController();
@@ -31,7 +59,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _securityAnswerController = TextEditingController();
 
   String selectedSecurityQuestion = 'ما هي مدينة ميلادك؟';
-  String selectedRole = 'مدخل بيانات';
 
   final List<String> securityQuestions = [
     'ما هي مدينة ميلادك؟',
@@ -39,31 +66,10 @@ class _LoginScreenState extends State<LoginScreen> {
     'ما هو اسم حيوانك الأليف الأول؟'
   ];
 
-  final List<String> rolesList = ['مدير', 'نائب مدير', 'مدخل بيانات'];
-
-  static final Map<String, Map<String, String>> _appUsers = {
-    'admin': {
-      'company': 'شركة ماهي البهوتي للاستثمار العقاري',
-      'firstName': 'الكابتن عبد الجواد',
-      'password': '1983',
-      'role': 'مدير',
-      'license': 'مدى الحياة',
-      'question': 'ما هي مدينة ميلادك؟',
-      'answer': 'القاهرة',
-    },
-    'programmer': {
-      'company': 'الدعم الفني للمبرمج',
-      'firstName': 'المبرمج الرئيسي',
-      'password': '1983',
-      'role': 'مدير',
-      'license': 'مدى الحياة',
-      'question': 'ما هي مدينة ميلادك؟',
-      'answer': 'القاهرة',
-    }
-  };
-
-  static String mainCompanyName = 'شركة ماهي البهوتي للتسويق العقاري';
-  static String subAppName = 'منظومة الكابتن للتسويق العقاري';
+  bool _isValidEmail(String email) {
+    final RegExp emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    return emailRegex.hasMatch(email.trim());
+  }
 
   @override
   void initState() {
@@ -71,23 +77,42 @@ class _LoginScreenState extends State<LoginScreen> {
     _loadInitialData();
   }
 
-  void _loadInitialData() async {
-    await AppManagerService.loadLocally();
-    String storedEmail = await AppManagerService.getStoredEmail();
+  @override
+  void dispose() {
+    _gmailController.dispose();
+    _usernameController.dispose();
+    _passwordController.dispose();
+    _gmailFocus.dispose();
+    _usernameFocus.dispose();
+    _passwordFocus.dispose();
+    _companyEmailController.dispose();
+    _companyNameController.dispose();
+    _newFirstNameController.dispose();
+    _newUsernameController.dispose();
+    _newPasswordController.dispose();
+    _securityAnswerController.dispose();
+    super.dispose();
+  }
 
-    // استرجاع بيانات الحفظ لو كانت مفعلة مسبقاً
+  void _loadInitialData() async {
+    await LocalStorageService.loadLocally();
+
+    Map<String, Map<String, String>> savedUsers = await LocalStorageService.loadAppUsers();
+    if (savedUsers.isNotEmpty) {
+      LoginScreen.appUsers.addAll(savedUsers);
+    }
+
     final prefs = await SharedPreferences.getInstance();
-    bool remember = prefs.getBool('remember_me') ?? false;
-    String savedUser = prefs.getString('saved_username') ?? '';
-    String savedPass = prefs.getString('saved_password') ?? '';
+    await prefs.setBool('remember_me', false);
+    await prefs.remove('saved_gmail');
+    await prefs.remove('saved_username');
+    await prefs.remove('saved_password');
 
     setState(() {
-      _gmailController.text = storedEmail;
-      _rememberMe = remember;
-      if (remember) {
-        _usernameController.text = savedUser;
-        _passwordController.text = savedPass;
-      }
+      _rememberMe = false;
+      _gmailController.text = '';
+      _usernameController.text = '';
+      _passwordController.text = '';
     });
   }
 
@@ -98,67 +123,110 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (username.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('الرجاء إدخال اسم المستخدم وكلمة السر!'), backgroundColor: Colors.orange),
+        const SnackBar(content: Text('الرجاء إدخال اسم المستخدم وكلمة السر بدقة!'), backgroundColor: Colors.orange),
       );
       return;
     }
 
-    // التحقق الفعلي من حساب الأدمن عبر خدمة LicensingService وتخطي العداد وتفعيل النسخة البرو
-    if (LicensingService.checkMasterAdmin(username, password)) {
-      _executeSuccessfulLogin(username, 'admin@gmail.com');
-      return;
+    bool isValidUser = false;
+    bool isMasterOrProgrammer = false;
+
+    // 1. حساب الأدمن والمبرمج: دخول مباشر بدون إجبار إيميل وحصولهم على تفعيل "مدى الحياة"
+    if ((username == 'admin' && password == '1983') ||
+        (username == 'programmer' && password == '1983')) {
+      isValidUser = true;
+      isMasterOrProgrammer = true;
+      if (gmail.isEmpty) {
+        gmail = (username == 'programmer') ? 'captain.support640@gmail.com' : 'admin@aqarat.com';
+      }
+    }
+    // 2. باقي المستخدمين والموظفين: ربط صارم وثلاثي (اسم المستخدم + كلمة السر + التحقق من الإيميل) ودون منح "مدى الحياة" تلقائياً
+    else if (LoginScreen.appUsers.containsKey(username)) {
+      final userData = LoginScreen.appUsers[username]!;
+      String registeredEmail = (userData['email'] ?? '').toString().trim();
+      String registeredPersonal = (userData['personalGmail'] ?? '').toString().trim();
+      String registeredPassword = (userData['password'] ?? '').toString().trim();
+
+      if (registeredPassword == password) {
+        if (gmail.isEmpty ||
+            registeredEmail.toLowerCase() == gmail.toLowerCase() ||
+            registeredPersonal.toLowerCase() == gmail.toLowerCase()) {
+          isValidUser = true;
+          isMasterOrProgrammer = false;
+          if (gmail.isEmpty) {
+            gmail = registeredEmail.isNotEmpty ? registeredEmail : 'user@aqarat.com';
+          }
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('خطأ: الجيميل المدخل لا يطابق الإيميل المسجل لهذا المستخدم!'), backgroundColor: Colors.red),
+          );
+          return;
+        }
+      }
     }
 
-    if (gmail.isEmpty || !gmail.contains('@gmail.com')) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('الرجاء إدخال جيميل الشركة الرئيسي بشكل صحيح!'), backgroundColor: Colors.orange),
-      );
-      return;
-    }
+    if (isValidUser) {
+      if (isMasterOrProgrammer) {
+        LicensingService.isActivated = true;
+        LicensingService.isMasterAdmin = true;
+        LicensingService.activationType = 'مدى الحياة';
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('is_activated', true);
+        await prefs.setBool('is_master_admin', true);
+        await prefs.setString('activation_type', 'مدى الحياة');
+      } else {
+        // الحسابات العادية لا تحصّل على مدى الحياة وتخضع لنظام التراخيص الخاص بهم
+        await LicensingService.loadLicenseStatus();
+      }
 
-    if (_appUsers.containsKey(username) && _appUsers[username]!['password'] == password) {
-      await AppManagerService.loginWithEmail(gmail);
+      await LocalStorageService.savePersonalGmail(gmail);
+      await LocalStorageService.loginWithEmail(gmail);
       _executeSuccessfulLogin(username, gmail);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('اسم المستخدم أو كلمة السر غير صحيحة!'), backgroundColor: Colors.red),
+        const SnackBar(content: Text('خطأ: اسم المستخدم أو كلمة السر غير صحيحة!'), backgroundColor: Colors.red),
       );
     }
   }
 
-  // دخول الضيف
   void _loginAsGuest() {
-    SecurityManager.currentUserRole = 'ضيف'; // تحديد دور الضيف ليعمل Read-Only
-    _executeSuccessfulLogin('guest', 'guest@system.com', isGuest: true);
+    SecurityManager.currentUserRole = 'ضيف';
+    _executeSuccessfulLogin('guest', 'guest@aqarat.com', isGuest: true);
   }
 
   void _executeSuccessfulLogin(String username, String gmail, {bool isGuest = false}) async {
     final prefs = await SharedPreferences.getInstance();
 
-    // حفظ أو مسح بيانات الدخول حسب حالة زر الحفظ
+    if (!isGuest && gmail.isNotEmpty) {
+      await LocalStorageService.loginWithEmail(gmail);
+      await LocalStorageService.savePersonalGmail(gmail);
+    }
+
     if (_rememberMe && !isGuest) {
       await prefs.setBool('remember_me', true);
+      await prefs.setString('saved_gmail', gmail);
       await prefs.setString('saved_username', username);
       await prefs.setString('saved_password', _passwordController.text.trim());
     } else {
       await prefs.setBool('remember_me', false);
+      await prefs.remove('saved_gmail');
       await prefs.remove('saved_username');
       await prefs.remove('saved_password');
     }
 
-    // ربط اسم المستخدم الحالي بملف SecurityManager للتحقق من الماستر كي
     SecurityManager.currentUsername = username;
+    SecurityManager.currentCompanyEmail = gmail;
 
-    String role = isGuest ? 'ضيف' : (_appUsers[username]!['role'] ?? 'مدخل بيانات');
+    String role = isGuest ? 'ضيف' : (LoginScreen.appUsers[username]?['role'] ?? 'مدير');
     if (!isGuest) {
-      SecurityManager.currentUserRole = role; // تعيين الدور الفعلي للمستخدم
+      SecurityManager.currentUserRole = role;
     }
 
-    String fName = isGuest ? 'زائر (تصفح فقط)' : (_appUsers[username]!['firstName'] ?? '');
+    String fName = isGuest ? 'زائر (تصفح فقط)' : (LoginScreen.appUsers[username]?['firstName'] ?? 'المدير');
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('مرحباً بك يا $fName ($role) - تم التفعيل بنجاح'), backgroundColor: isGuest ? Colors.blue : Colors.green),
+        SnackBar(content: Text('مرحباً بك يا $fName ($role) - تم الدخول بنجاح'), backgroundColor: isGuest ? Colors.blue : Colors.green),
       );
 
       Navigator.pushReplacement(
@@ -185,7 +253,7 @@ class _LoginScreenState extends State<LoginScreen> {
               textDirection: TextDirection.rtl,
               child: AlertDialog(
                 backgroundColor: const Color(0xFF2C2C2C),
-                title: const Text('تسجيل مستخدم وتنشيط المنظومة (للإدارة فقط)', style: TextStyle(color: Colors.amberAccent, fontSize: 15)),
+                title: const Text('تسجيل حساب المدير وتنشيط المنظومة', style: TextStyle(color: Colors.amberAccent, fontSize: 15)),
                 content: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -194,24 +262,43 @@ class _LoginScreenState extends State<LoginScreen> {
                         controller: _companyEmailController,
                         style: const TextStyle(color: Colors.cyanAccent),
                         keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(labelText: 'إيميل الشركة المشترك (الموحد)', labelStyle: TextStyle(color: Colors.cyanAccent)),
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        enableIMEPersonalizedLearning: false,
+                        onSubmitted: (_) => FocusScope.of(context).nextFocus(),
+                        decoration: const InputDecoration(
+                          labelText: 'إدخال الجيميل الخاص بتسجيل الدخول',
+                          labelStyle: TextStyle(color: Colors.cyanAccent),
+                        ),
                       ),
                       const SizedBox(height: 10),
                       TextField(
                         controller: _companyNameController,
                         style: const TextStyle(color: Colors.white),
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        enableIMEPersonalizedLearning: false,
+                        onSubmitted: (_) => FocusScope.of(context).nextFocus(),
                         decoration: const InputDecoration(labelText: 'اسم الشركة أو المكتب العقاري', labelStyle: TextStyle(color: Colors.amberAccent)),
                       ),
                       const SizedBox(height: 10),
                       TextField(
                         controller: _newFirstNameController,
                         style: const TextStyle(color: Colors.white),
-                        decoration: const InputDecoration(labelText: 'الاسم الأول للمستخدم', labelStyle: TextStyle(color: Colors.grey)),
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        enableIMEPersonalizedLearning: false,
+                        onSubmitted: (_) => FocusScope.of(context).nextFocus(),
+                        decoration: const InputDecoration(labelText: 'اسم المدير الأول', labelStyle: TextStyle(color: Colors.grey)),
                       ),
                       const SizedBox(height: 10),
                       TextField(
                         controller: _newUsernameController,
                         style: const TextStyle(color: Colors.white),
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        enableIMEPersonalizedLearning: false,
+                        onSubmitted: (_) => FocusScope.of(context).nextFocus(),
                         decoration: const InputDecoration(labelText: 'اسم المستخدم للدخول', labelStyle: TextStyle(color: Colors.grey)),
                       ),
                       const SizedBox(height: 10),
@@ -219,25 +306,18 @@ class _LoginScreenState extends State<LoginScreen> {
                         controller: _newPasswordController,
                         obscureText: true,
                         style: const TextStyle(color: Colors.white),
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        enableIMEPersonalizedLearning: false,
+                        onSubmitted: (_) => FocusScope.of(context).nextFocus(),
                         decoration: const InputDecoration(labelText: 'كلمة السر', labelStyle: TextStyle(color: Colors.grey)),
-                      ),
-                      const SizedBox(height: 15),
-                      DropdownButtonFormField<String>(
-                        value: selectedRole,
-                        dropdownColor: const Color(0xFF1E1E1E),
-                        style: const TextStyle(color: Colors.white),
-                        decoration: const InputDecoration(labelText: 'الصلاحية (مدير / نائب مدير / مدخل بيانات)', labelStyle: TextStyle(color: Colors.amberAccent)),
-                        items: rolesList.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
-                        onChanged: (val) {
-                          if (val != null) setDialogState(() => selectedRole = val);
-                        },
                       ),
                       const SizedBox(height: 15),
                       DropdownButtonFormField<String>(
                         value: selectedSecurityQuestion,
                         dropdownColor: const Color(0xFF1E1E1E),
                         style: const TextStyle(color: Colors.white),
-                        decoration: const InputDecoration(labelText: 'سؤال الأمان للاستعادة', labelStyle: TextStyle(color: Colors.grey)),
+                        decoration: const InputDecoration(labelText: 'سؤال الأمان للاستعادة', labelStyle: TextStyle(color: Colors.amberAccent)),
                         items: securityQuestions.map((q) => DropdownMenuItem(value: q, child: Text(q))).toList(),
                         onChanged: (val) {
                           if (val != null) setDialogState(() => selectedSecurityQuestion = val);
@@ -247,6 +327,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       TextField(
                         controller: _securityAnswerController,
                         style: const TextStyle(color: Colors.white),
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        enableIMEPersonalizedLearning: false,
                         decoration: const InputDecoration(labelText: 'إجابة سؤال الأمان', labelStyle: TextStyle(color: Colors.grey)),
                       ),
                     ],
@@ -260,37 +343,55 @@ class _LoginScreenState extends State<LoginScreen> {
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(backgroundColor: Colors.green.shade700),
                     onPressed: () async {
-                      String compEmail = _companyEmailController.text.trim();
+                      String rawEmail = _companyEmailController.text.trim();
                       String comp = _companyNameController.text.trim();
                       String fName = _newFirstNameController.text.trim();
                       String uName = _newUsernameController.text.trim();
                       String pass = _newPasswordController.text.trim();
                       String ans = _securityAnswerController.text.trim();
 
-                      if (compEmail.isEmpty || comp.isEmpty || uName.isEmpty || pass.isEmpty || fName.isEmpty) {
+                      if (rawEmail.isEmpty || comp.isEmpty || uName.isEmpty || pass.isEmpty || fName.isEmpty || ans.isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('الرجاء إكمال إيميل الشركة وجميع البيانات المطلوبة!'), backgroundColor: Colors.orange),
+                          const SnackBar(content: Text('الرجاء إكمال جميع البيانات وسؤال الأمان!'), backgroundColor: Colors.orange),
                         );
                         return;
                       }
 
-                      // حفظ وتعيين إيميل الشركة المشترك محلياً
-                      await AppManagerService.loginWithEmail(compEmail);
+                      if (!_isValidEmail(rawEmail)) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('الرجاء إدخال إيميل صحيح بفرومات مكتملة!'), backgroundColor: Colors.orange),
+                        );
+                        return;
+                      }
 
-                      mainCompanyName = comp;
-                      _appUsers[uName] = {
+                      await LocalStorageService.loginWithEmail(rawEmail);
+                      await LocalStorageService.savePersonalGmail(rawEmail);
+
+                      LoginScreen.mainCompanyName = comp;
+                      LoginScreen.appUsers[uName] = {
                         'company': comp,
                         'firstName': fName,
                         'password': pass,
-                        'role': selectedRole,
+                        'role': 'مدير',
                         'license': 'فترة تجريبية 30 يوم',
                         'question': selectedSecurityQuestion,
                         'answer': ans,
+                        'email': "$uName@aqarat.com",
+                        'personalGmail': rawEmail,
                       };
+
+                      await LocalStorageService.saveAppUsers(LoginScreen.appUsers);
+
+                      setState(() {
+                        _gmailController.text = '';
+                        _usernameController.text = '';
+                        _passwordController.text = '';
+                        _rememberMe = false;
+                      });
 
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('تم إنشاء الحساب وتنشيط الفترة التجريبية (30 يوم) بنجاح!'), backgroundColor: Colors.green),
+                        const SnackBar(content: Text('تم تسجيل حساب المدير بنجاح وتم ربط الإيميل والنسخ الاحتياطي!'), backgroundColor: Colors.green),
                       );
                     },
                     child: const Text('حفظ وتسجيل', style: TextStyle(color: Colors.white)),
@@ -316,19 +417,27 @@ class _LoginScreenState extends State<LoginScreen> {
           textDirection: TextDirection.rtl,
           child: AlertDialog(
             backgroundColor: const Color(0xFF2C2C2C),
-            title: const Text('استعادة كلمة السر', style: TextStyle(color: Colors.amberAccent)),
+            title: const Text('استعادة وتغيير كلمة السر', style: TextStyle(color: Colors.amberAccent)),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: recoverUserCtrl,
                   style: const TextStyle(color: Colors.white),
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  enableIMEPersonalizedLearning: false,
+                  onSubmitted: (_) => FocusScope.of(context).nextFocus(),
                   decoration: const InputDecoration(labelText: 'اسم المستخدم', labelStyle: TextStyle(color: Colors.grey)),
                 ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: recoverAnswerCtrl,
                   style: const TextStyle(color: Colors.white),
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  enableIMEPersonalizedLearning: false,
+                  onSubmitted: (_) => FocusScope.of(context).nextFocus(),
                   decoration: const InputDecoration(labelText: 'إجابة سؤال الأمان', labelStyle: TextStyle(color: Colors.grey)),
                 ),
                 const SizedBox(height: 10),
@@ -336,6 +445,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: newPassCtrl,
                   obscureText: true,
                   style: const TextStyle(color: Colors.white),
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  enableIMEPersonalizedLearning: false,
                   decoration: const InputDecoration(labelText: 'كلمة السر الجديدة', labelStyle: TextStyle(color: Colors.grey)),
                 ),
               ],
@@ -347,13 +459,14 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.amber.shade700),
-                onPressed: () {
+                onPressed: () async {
                   String u = recoverUserCtrl.text.trim();
                   String a = recoverAnswerCtrl.text.trim();
                   String np = newPassCtrl.text.trim();
 
-                  if (_appUsers.containsKey(u) && _appUsers[u]!['answer'] == a) {
-                    _appUsers[u]!['password'] = np;
+                  if (LoginScreen.appUsers.containsKey(u) && LoginScreen.appUsers[u]!['answer'] == a) {
+                    LoginScreen.appUsers[u]!['password'] = np;
+                    await LocalStorageService.saveAppUsers(LoginScreen.appUsers);
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('تم تغيير كلمة السر بنجاح!'), backgroundColor: Colors.green),
@@ -385,7 +498,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Opacity(
                 opacity: 0.12,
                 child: Image.asset(
-                  'assets/logo.jpg',
+                  'assets/images/logo.png',
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) => Container(color: const Color(0xFF141414)),
                 ),
@@ -415,7 +528,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(10),
                         child: Image.asset(
-                          'assets/logo.jpg',
+                          'assets/images/logo.png',
                           height: 85,
                           fit: BoxFit.contain,
                           errorBuilder: (context, error, stackTrace) => const Icon(
@@ -427,13 +540,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        mainCompanyName,
+                        LoginScreen.mainCompanyName,
                         textAlign: TextAlign.center,
                         style: const TextStyle(color: Colors.amber, fontSize: 17, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        subAppName,
+                        LoginScreen.subAppName,
                         textAlign: TextAlign.center,
                         style: const TextStyle(color: Colors.cyanAccent, fontSize: 13, fontWeight: FontWeight.bold),
                       ),
@@ -442,14 +555,15 @@ class _LoginScreenState extends State<LoginScreen> {
                         controller: _gmailController,
                         focusNode: _gmailFocus,
                         style: const TextStyle(color: Colors.cyanAccent),
-                        keyboardType: TextInputType.emailAddress,
-                        textInputAction: TextInputAction.next,
-                        onSubmitted: (_) {
-                          FocusScope.of(context).requestFocus(_usernameFocus);
-                        },
+                        keyboardType: TextInputType.text,
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        enableIMEPersonalizedLearning: false,
+                        autofillHints: const [],
+                        onSubmitted: (_) => FocusScope.of(context).requestFocus(_usernameFocus),
                         decoration: InputDecoration(
-                          labelText: 'جيميل الشركة الرئيسي (حساب المدير)',
-                          labelStyle: const TextStyle(color: Colors.amberAccent),
+                          labelText: 'إدخال الجيميل الخاص بتسجيل الدخول',
+                          labelStyle: const TextStyle(color: Colors.cyanAccent),
                           filled: true,
                           fillColor: const Color(0xFF2C2C2C),
                           prefixIcon: const Icon(Icons.mark_email_read, color: Colors.cyanAccent),
@@ -461,13 +575,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         controller: _usernameController,
                         focusNode: _usernameFocus,
                         style: const TextStyle(color: Colors.white),
-                        textInputAction: TextInputAction.next,
-                        onSubmitted: (_) {
-                          FocusScope.of(context).requestFocus(_passwordFocus);
-                        },
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        enableIMEPersonalizedLearning: false,
+                        autofillHints: const [],
+                        onSubmitted: (_) => FocusScope.of(context).requestFocus(_passwordFocus),
                         decoration: InputDecoration(
                           labelText: 'اسم المستخدم',
-                          labelStyle: const TextStyle(color: Colors.grey),
+                          labelStyle: const TextStyle(color: Colors.amber),
                           filled: true,
                           fillColor: const Color(0xFF2C2C2C),
                           prefixIcon: const Icon(Icons.person, color: Colors.amber),
@@ -480,24 +595,20 @@ class _LoginScreenState extends State<LoginScreen> {
                         focusNode: _passwordFocus,
                         obscureText: !_showPassword,
                         style: const TextStyle(color: Colors.white),
-                        textInputAction: TextInputAction.done,
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        enableIMEPersonalizedLearning: false,
+                        autofillHints: const [],
                         onSubmitted: (_) => _login(),
                         decoration: InputDecoration(
                           labelText: 'كلمة السر',
-                          labelStyle: const TextStyle(color: Colors.grey),
+                          labelStyle: const TextStyle(color: Colors.amber),
                           filled: true,
                           fillColor: const Color(0xFF2C2C2C),
                           prefixIcon: const Icon(Icons.lock, color: Colors.amber),
                           suffixIcon: IconButton(
-                            icon: Icon(
-                              _showPassword ? Icons.visibility : Icons.visibility_off,
-                              color: Colors.grey,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _showPassword = !_showPassword;
-                              });
-                            },
+                            icon: Icon(_showPassword ? Icons.visibility : Icons.visibility_off, color: Colors.grey),
+                            onPressed: () => setState(() => _showPassword = !_showPassword),
                           ),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                         ),
@@ -509,16 +620,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             value: _rememberMe,
                             activeColor: Colors.amber,
                             checkColor: Colors.black,
-                            onChanged: (bool? value) {
-                              setState(() {
-                                _rememberMe = value ?? false;
-                              });
-                            },
+                            onChanged: (bool? value) => setState(() => _rememberMe = value ?? false),
                           ),
-                          const Text(
-                            'حفظ اسم المستخدم وكلمة السر',
-                            style: TextStyle(color: Colors.grey, fontSize: 13),
-                          ),
+                          const Text('حفظ حالة الدخول والربط', style: TextStyle(color: Colors.grey, fontSize: 13)),
                         ],
                       ),
                       const SizedBox(height: 16),

@@ -1,41 +1,48 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'security_manager.dart';
 
 class LicensingService {
-  // المعادلة السرية الثابتة: 24 + 9 - 1983 = -1950
-  static const int _secretFormula = 24 + 9 - 1983;
+  static const int _baseFormulaValue = 24 + 9 - 1983;
 
   static bool isMasterAdmin = false;
   static DateTime? trialStartDate;
   static bool isActivated = false;
-  static String activationType = 'فترة تجريبية (شهر)';
+  static String activationType = 'فترة تجريبية (7 أيام)';
 
-  // تحميل الحالة المحلية للتفعيل مع فحص الأمان ضد التلاعب بالتاريخ
   static Future<void> loadLicenseStatus() async {
     final prefs = await SharedPreferences.getInstance();
-    isActivated = prefs.getBool('is_activated') ?? false;
-    isMasterAdmin = prefs.getBool('is_master_admin') ?? false;
-    activationType = prefs.getString('activation_type') ?? 'فترة تجريبية (شهر)';
 
-    String? storedDate = prefs.getString('trial_start_date');
-    if (storedDate != null) {
-      trialStartDate = DateTime.tryParse(storedDate);
-    } else {
-      trialStartDate = DateTime.now();
-      await prefs.setString('trial_start_date', trialStartDate!.toIso8601String());
+    // التحقق الفوري من اسم المستخدم الحالي لمنع تسريب مدى الحياة للموظفين
+    String currentUsername = SecurityManager.currentUsername.trim().toLowerCase();
+    bool isRootAdmin = (currentUsername == 'admin' || currentUsername == 'programmer');
+
+    if (isRootAdmin) {
+      isMasterAdmin = true;
+      isActivated = true;
+      activationType = 'مدى الحياة';
+      return;
     }
 
-    // [حماية إضافية]: رصد التلاعب بالتاريخ (إذا تم إرجاع تاريخ الجهاز قبل تاريخ البداية المسجل)
-    if (!isActivated && !isMasterAdmin && trialStartDate != null) {
-      if (DateTime.now().isBefore(trialStartDate!)) {
-        // تم التلاعب بالتاريخ وإرجاعه للوراء، قفل الفترة فوراً
-        trialStartDate = DateTime.now().subtract(const Duration(days: 35));
+    // للموظفين العاديين: لا يتم منح مدى الحياة العام أبداً، بل قراءة حالتهم المستقلة
+    isMasterAdmin = false;
+    isActivated = prefs.getBool('user_${currentUsername}_is_activated') ?? false;
+    activationType = prefs.getString('user_${currentUsername}_activation_type') ?? 'فترة تجريبية (7 أيام)';
+
+    if (activationType == 'مدى الحياة') {
+      isActivated = true;
+    } else {
+      String? storedDate = prefs.getString('user_${currentUsername}_trial_start_date');
+      if (storedDate != null) {
+        trialStartDate = DateTime.tryParse(storedDate);
+      } else {
+        trialStartDate = DateTime.now();
+        await prefs.setString('user_${currentUsername}_trial_start_date', trialStartDate!.toIso8601String());
       }
     }
   }
 
-  // توليد كود رقم الجهاز بناءً على المعادلة ورقم الجهاز
   static String getDeviceHardwareId(String rawDeviceId) {
-    String combined = "$rawDeviceId-$_secretFormula";
+    String combined = "$rawDeviceId-$_baseFormulaValue";
     int hash = 0;
     for (int i = 0; i < combined.length; i++) {
       hash = 31 * hash + combined.codeUnitAt(i);
@@ -48,97 +55,96 @@ class LicensingService {
     return numericOnly.substring(0, 10);
   }
 
-  // التحقق من الأدمن الرئيسي (admin / 1983)
+  // الاستثناء الحصري للأدمن والمبرمج فقط بكلمة السر 1983
   static bool checkMasterAdmin(String username, String password) {
-    if (username.trim() == "admin" && password.trim() == "1983") {
+    String cleanUser = username.trim().toLowerCase();
+    if ((cleanUser == "admin" || cleanUser == "programmer") && password.trim() == "1983") {
       isMasterAdmin = true;
       isActivated = true;
-      activationType = 'أدمن رئيسي (مفتوح)';
-      _saveToPrefs();
+      activationType = 'مدى الحياة';
       return true;
     }
     return false;
   }
 
-  // فحص كود التفعيل وأكواد النظام
   static bool processActivationCode({
     required String inputCode,
     required String deviceId,
   }) {
     String cleanCode = inputCode.trim().toUpperCase();
     String hardwareKey = getDeviceHardwareId(deviceId);
+    int deviceNum = int.tryParse(hardwareKey) ?? 12345678;
 
-    // حساب ناتج المعادلة السنوية (سيريال الجهاز + 24 + 9 - 1983)
-    int parsedKey = int.tryParse(hardwareKey) ?? 12345678;
-    String annualCode = (parsedKey + _secretFormula).abs().toString();
+    int calculatedAnnual = 24 + 9 - 1983 + deviceNum;
+    String annualCode = calculatedAnnual.abs().toString();
+    String lifetimeCode = "A$annualCode";
+    String lifetimeCodeAlt = "A-$annualCode";
 
-    // 1. كود إعادة الضبط (ريست الشهر): A1983 يصفر العداد ويمنح شهراً جديداً
-    if (cleanCode == "A1983") {
+    String currentUsername = SecurityManager.currentUsername.trim().toLowerCase();
+    if (currentUsername.isEmpty) currentUsername = 'default';
+
+    if (cleanCode == "1983" || cleanCode == "A1983") {
       trialStartDate = DateTime.now();
       isActivated = false;
       isMasterAdmin = false;
-      activationType = 'فترة تجريبية (شهر)';
-      _saveToPrefs();
+      activationType = 'فترة تجريبية (7 أيام)';
+      _saveUserPrefs(currentUsername);
       return true;
     }
 
-    // 2. التفعيل مدى الحياة: يبدأ بحرف A متبوعاً بناتج معادلة كود الجهاز
-    if (cleanCode == "A$annualCode" || cleanCode == "A-$annualCode" || cleanCode == "A$hardwareKey" || cleanCode == "A-$hardwareKey") {
+    if (cleanCode == lifetimeCode || cleanCode == lifetimeCodeAlt || cleanCode == "A$hardwareKey" || cleanCode == "A-$hardwareKey") {
       isActivated = true;
-      activationType = 'تفعيل مدى الحياة';
-      _saveToPrefs();
+      isMasterAdmin = false;
+      activationType = 'مدى الحياة';
+      _saveUserPrefs(currentUsername);
       return true;
     }
 
-    // 3. التفعيل السنوي: ناتج المعادلة الحسابية المرتبطة بسيريال الجهاز
     if (cleanCode == annualCode) {
       isActivated = true;
-      activationType = 'تفعيل سنوي';
-      _saveToPrefs();
+      isMasterAdmin = false;
+      activationType = 'سنة';
+      _saveUserPrefs(currentUsername);
       return true;
     }
 
-    // 4. الفترة التجريبية (شهر): إدخال سيريال الجهاز العادي
     if (cleanCode == hardwareKey) {
       trialStartDate = DateTime.now();
       isActivated = false;
       isMasterAdmin = false;
-      activationType = 'فترة تجريبية (شهر)';
-      _saveToPrefs();
+      activationType = 'شهر';
+      _saveUserPrefs(currentUsername);
       return true;
     }
 
     return false;
   }
 
-  // حساب الأيام المتبقية مع التدقيق ضد التلاعب بالوقت
   static int getRemainingDays() {
-    if (isMasterAdmin || isActivated) {
-      return activationType == 'تفعيل مدى الحياة' ? 9999 : 365;
+    if (isMasterAdmin || isActivated || activationType == 'مدى الحياة') {
+      return 9999;
     }
 
     DateTime today = DateTime.now();
     trialStartDate ??= today;
 
-    // فحص تلاعب الوقت الفوري
     if (today.isBefore(trialStartDate!)) {
-      return 0; // انتهت الفترة فورا نتيجة تغيير وقت الجهاز
+      return (activationType == 'شهر') ? 30 : 7;
     }
 
     int daysPassed = today.difference(trialStartDate!).inDays;
-    int remaining = 30 - daysPassed;
+    int limitDays = (activationType == 'شهر') ? 30 : 7;
+    int remaining = limitDays - daysPassed;
 
     return remaining > 0 ? remaining : 0;
   }
 
-  // حفظ الحالة محلياً باستخدام SharedPreferences
-  static Future<void> _saveToPrefs() async {
+  static Future<void> _saveUserPrefs(String username) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('is_activated', isActivated);
-    await prefs.setBool('is_master_admin', isMasterAdmin);
-    await prefs.setString('activation_type', activationType);
+    await prefs.setBool('user_${username}_is_activated', isActivated);
+    await prefs.setString('user_${username}_activation_type', activationType);
     if (trialStartDate != null) {
-      await prefs.setString('trial_start_date', trialStartDate!.toIso8601String());
+      await prefs.setString('user_${username}_trial_start_date', trialStartDate!.toIso8601String());
     }
   }
 }

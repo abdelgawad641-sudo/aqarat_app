@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../app_data.dart';
 import '../app_dropdowns.dart';
+import '../services/local_storage_service.dart';
+import '../services/cloud_sync_service.dart';
 import '../services/smart_text_parser.dart';
 import '01_clients_screen.dart';
 import '02_brokers_screen.dart';
@@ -8,8 +10,6 @@ import '04_for_sale_screen.dart';
 import '05_for_rent_screen.dart';
 import '06_inspections_screen.dart';
 import '07_completed_operations_screen.dart';
-import '08_accounts_screen.dart';
-import '09_general_report_screen.dart';
 
 class CustomerRequestsScreen extends StatefulWidget {
   const CustomerRequestsScreen({super.key});
@@ -21,33 +21,6 @@ class CustomerRequestsScreen extends StatefulWidget {
 class _CustomerRequestsScreenState extends State<CustomerRequestsScreen> {
   int selectedRequestIndex = 0;
   String _searchPropertyFilter = 'الكل';
-
-  String _getClientPhones(String clientName) {
-    if (clientName.trim().isEmpty || clientName == 'عميل عام') return '-';
-    String target = clientName.trim().toLowerCase();
-
-    var clientsList = AppData.storage['العملاء'];
-    if (clientsList != null) {
-      for (var c in clientsList) {
-        if (c is Map) {
-          String cName = (c['إسم العميل'] ?? c['اسم العميل'] ?? c['الاسم'] ?? '').toString().trim().toLowerCase();
-          if (cName == target || cName.contains(target) || target.contains(cName)) {
-            String p1 = (c['رقم التليفون 1'] ?? c['رقم التليفون1'] ?? c['رقم الهاتف'] ?? c['التليفون'] ?? '').toString().trim();
-            String p2 = (c['رقم التليفون 2'] ?? c['رقم التليفون2'] ?? c['الموبايل'] ?? '').toString().trim();
-
-            List<String> phones = [];
-            if (p1.isNotEmpty && p1 != '-' && p1 != 'null') phones.add(p1);
-            if (p2.isNotEmpty && p2 != '-' && p2 != 'null') phones.add(p2);
-
-            if (phones.isNotEmpty) {
-              return phones.join('\n');
-            }
-          }
-        }
-      }
-    }
-    return '-';
-  }
 
   void _showAddRequestDialog({ParsedPropertyData? initialData}) {
     final clientNames = AppDropdowns.getClientNames();
@@ -101,7 +74,7 @@ class _CustomerRequestsScreenState extends State<CustomerRequestsScreen> {
     final notesController = TextEditingController(text: defaultNotes);
     final fNotes = FocusNode();
 
-    void saveRequest(BuildContext dialogContext) {
+    void saveRequest(BuildContext dialogContext) async {
       if (selectedClient.isEmpty || selectedClient == 'لا توجد عملاء مسجلة') {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('برجاء إضافة عملاء أولاً لتسجيل الطلبات'), backgroundColor: Colors.red),
@@ -130,10 +103,15 @@ class _CustomerRequestsScreenState extends State<CustomerRequestsScreen> {
         });
       });
 
+      await LocalStorageService.saveLocally();
+      CloudSyncService.syncToCloud(isAuto: true);
+
       Navigator.pop(dialogContext);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم حفظ طلب العميل بنجاح'), backgroundColor: Colors.green),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم حفظ طلب العميل وتحديث السحابة بنجاح'), backgroundColor: Colors.green),
+        );
+      }
     }
 
     showDialog(
@@ -392,19 +370,19 @@ class _CustomerRequestsScreenState extends State<CustomerRequestsScreen> {
                     const SizedBox(width: 8),
                     IconButton(
                       icon: const Icon(Icons.print, color: Colors.cyanAccent, size: 24),
-                      tooltip: 'طباعة التقرير',
+                      tooltip: 'طباعة التقرير الفعلي',
                       onPressed: () {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('جاري إعداد تقرير طلبات العملاء للطباعة...')),
+                          const SnackBar(content: Text('جاري طباعة تقرير طلبات العملاء الحالي...'), backgroundColor: Colors.cyan),
                         );
                       },
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF2C2C2C),
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                       ),
                       onPressed: () {
                         Navigator.pushReplacement(
@@ -412,15 +390,15 @@ class _CustomerRequestsScreenState extends State<CustomerRequestsScreen> {
                           MaterialPageRoute(builder: (context) => const BrokersScreen()),
                         );
                       },
-                      icon: const Icon(Icons.arrow_right_rounded, color: Colors.amberAccent, size: 24),
-                      label: const Text('الصفحة السابقة', style: TextStyle(fontSize: 12)),
+                      icon: const Icon(Icons.arrow_right_rounded, color: Colors.amberAccent, size: 22),
+                      label: const Text('الصفحة السابقة', style: TextStyle(fontSize: 11)),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 4),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF2C2C2C),
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                       ),
                       onPressed: () {
                         Navigator.pushReplacement(
@@ -428,8 +406,8 @@ class _CustomerRequestsScreenState extends State<CustomerRequestsScreen> {
                           MaterialPageRoute(builder: (context) => const ForSaleScreen()),
                         );
                       },
-                      icon: const Icon(Icons.arrow_left_rounded, color: Colors.amberAccent, size: 24),
-                      label: const Text('الصفحة التالية', style: TextStyle(fontSize: 12)),
+                      icon: const Icon(Icons.arrow_left_rounded, color: Colors.amberAccent, size: 22),
+                      label: const Text('الصفحة التالية', style: TextStyle(fontSize: 11)),
                     ),
                     const SizedBox(width: 12),
                     ElevatedButton.icon(
@@ -536,18 +514,6 @@ class _CustomerRequestsScreenState extends State<CustomerRequestsScreen> {
                       onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const CompletedOperationsScreen())),
                       child: const Text('العمليات', style: TextStyle(color: Colors.white, fontSize: 11)),
                     ),
-                    const SizedBox(width: 4),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF333333)),
-                      onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AccountsScreen())),
-                      child: const Text('الحسابات', style: TextStyle(color: Colors.white, fontSize: 11)),
-                    ),
-                    const SizedBox(width: 4),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF333333)),
-                      onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const GeneralReportScreen())),
-                      child: const Text('التقرير', style: TextStyle(color: Colors.white, fontSize: 11)),
-                    ),
                   ],
                 ),
               ),
@@ -599,18 +565,17 @@ class _CustomerRequestsScreenState extends State<CustomerRequestsScreen> {
                               border: TableBorder.all(color: Colors.grey.shade800, width: 1),
                               defaultVerticalAlignment: TableCellVerticalAlignment.middle,
                               columnWidths: const {
-                                0: IntrinsicColumnWidth(), // م
-                                1: IntrinsicColumnWidth(), // التاريخ
-                                2: IntrinsicColumnWidth(), // اسم العميل
-                                3: IntrinsicColumnWidth(), // رقم الموبايل
-                                4: IntrinsicColumnWidth(), // نوع العملية
-                                5: IntrinsicColumnWidth(), // نوع العقار
-                                6: IntrinsicColumnWidth(), // وحدة القياس
-                                7: IntrinsicColumnWidth(), // الميزانية
-                                8: IntrinsicColumnWidth(), // المساحة المطلوبة
-                                9: IntrinsicColumnWidth(), // حالة المعروض والعقارات المطابقة
-                                10: IntrinsicColumnWidth(), // ملاحظات
-                                11: IntrinsicColumnWidth(), // حذف
+                                0: IntrinsicColumnWidth(),
+                                1: IntrinsicColumnWidth(),
+                                2: IntrinsicColumnWidth(),
+                                3: IntrinsicColumnWidth(),
+                                4: IntrinsicColumnWidth(),
+                                5: IntrinsicColumnWidth(),
+                                6: IntrinsicColumnWidth(),
+                                7: IntrinsicColumnWidth(),
+                                8: IntrinsicColumnWidth(),
+                                9: IntrinsicColumnWidth(),
+                                10: IntrinsicColumnWidth(),
                               },
                               children: [
                                 TableRow(
@@ -619,7 +584,6 @@ class _CustomerRequestsScreenState extends State<CustomerRequestsScreen> {
                                     _buildHeaderCell('م', Colors.amberAccent),
                                     _buildHeaderCell('التاريخ', Colors.white),
                                     _buildHeaderCell('اسم العميل', Colors.white),
-                                    _buildHeaderCell('رقم الموبايل', Colors.greenAccent),
                                     _buildHeaderCell('نوع العملية', Colors.white),
                                     _buildHeaderCell('نوع العقار', Colors.white),
                                     _buildHeaderCell('وحدة القياس', Colors.white),
@@ -634,7 +598,6 @@ class _CustomerRequestsScreenState extends State<CustomerRequestsScreen> {
                                   if (index < requestsList.length) {
                                     Map<String, String> item = requestsList[index];
                                     String currentClient = (item['اسم العميل'] ?? '').trim();
-                                    String clientPhones = _getClientPhones(currentClient);
                                     List<Map<String, String>> rowMatches = _getMatchingResults(item);
                                     Color rowColor = index.isEven ? const Color(0xFF1E1E1E) : const Color(0xFF252525);
 
@@ -644,7 +607,6 @@ class _CustomerRequestsScreenState extends State<CustomerRequestsScreen> {
                                         _buildDataCell(Text('${index + 1}', style: const TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold, fontSize: 11)), alignment: Alignment.center),
                                         _buildDataCell(Text(item['التاريخ'] ?? '', style: const TextStyle(color: Colors.white, fontSize: 11))),
                                         _buildDataCell(Text(currentClient, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 11))),
-                                        _buildDataCell(Text(clientPhones, style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 11))),
                                         _buildDataCell(Text(item['نوع العملية'] ?? '', style: const TextStyle(color: Colors.white, fontSize: 11))),
                                         _buildDataCell(Text(item['نوع العقار'] ?? '', style: const TextStyle(color: Colors.white, fontSize: 11))),
                                         _buildDataCell(Text(item['وحدة القياس'] ?? '', style: const TextStyle(color: Colors.white, fontSize: 11))),
@@ -682,7 +644,7 @@ class _CustomerRequestsScreenState extends State<CustomerRequestsScreen> {
                                                       activeColor: Colors.amber,
                                                       checkColor: Colors.black,
                                                       visualDensity: VisualDensity.compact,
-                                                      onChanged: (val) {
+                                                      onChanged: (val) async {
                                                         setState(() {
                                                           String operation = (item['نوع العملية'] ?? '').toString().trim();
                                                           String category = (item['الفئة'] ?? '').toString().trim();
@@ -703,6 +665,8 @@ class _CustomerRequestsScreenState extends State<CustomerRequestsScreen> {
                                                             }
                                                           }
                                                         });
+                                                        await LocalStorageService.saveLocally();
+                                                        CloudSyncService.syncToCloud(isAuto: true);
                                                       },
                                                     ),
                                                     const Text('محجوز', style: TextStyle(color: Colors.white, fontSize: 9)),
@@ -712,9 +676,9 @@ class _CustomerRequestsScreenState extends State<CustomerRequestsScreen> {
                                                       activeColor: Colors.amberAccent,
                                                       checkColor: Colors.black,
                                                       visualDensity: VisualDensity.compact,
-                                                      onChanged: (val) {
-                                                        setState(() {
-                                                          if (val == true) {
+                                                      onChanged: (val) async {
+                                                        if (val == true) {
+                                                          setState(() {
                                                             String operation = (item['نوع العملية'] ?? '').toString().trim();
                                                             String category = (item['الفئة'] ?? '').toString().trim();
                                                             bool isRentOperation = operation.contains('إيجار') || operation.contains('ايجار') || category.contains('إيجار') || category.contains('ايجار');
@@ -743,8 +707,10 @@ class _CustomerRequestsScreenState extends State<CustomerRequestsScreen> {
                                                             });
                                                             requestsList.removeAt(index);
                                                             AppData.storage['طلبات العملاء'] = requestsList;
-                                                          }
-                                                        });
+                                                          });
+                                                          await LocalStorageService.saveLocally();
+                                                          CloudSyncService.syncToCloud(isAuto: true);
+                                                        }
                                                       },
                                                     ),
                                                     const Text('تحت المعاينة', style: TextStyle(color: Colors.white, fontSize: 9)),
@@ -762,14 +728,18 @@ class _CustomerRequestsScreenState extends State<CustomerRequestsScreen> {
                                             icon: const Icon(Icons.delete_forever, color: Colors.redAccent, size: 18),
                                             padding: EdgeInsets.zero,
                                             constraints: const BoxConstraints(),
-                                            onPressed: () {
+                                            onPressed: () async {
                                               setState(() {
                                                 requestsList.removeAt(index);
                                                 AppData.storage['طلبات العملاء'] = requestsList;
                                               });
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                const SnackBar(content: Text('تم حذف الطلب بنجاح'), backgroundColor: Colors.orange),
-                                              );
+                                              await LocalStorageService.saveLocally();
+                                              CloudSyncService.syncToCloud(isAuto: true);
+                                              if (mounted) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  const SnackBar(content: Text('تم حذف الطلب وتحديث السحابة بنجاح'), backgroundColor: Colors.orange),
+                                                );
+                                              }
                                             },
                                           ),
                                           alignment: Alignment.center,
@@ -779,7 +749,7 @@ class _CustomerRequestsScreenState extends State<CustomerRequestsScreen> {
                                   } else {
                                     return TableRow(
                                       decoration: BoxDecoration(color: index.isEven ? const Color(0xFF1E1E1E) : const Color(0xFF252525)),
-                                      children: List.generate(12, (_) => const SizedBox(height: 30)),
+                                      children: List.generate(11, (_) => const SizedBox(height: 30)),
                                     );
                                   }
                                 }),

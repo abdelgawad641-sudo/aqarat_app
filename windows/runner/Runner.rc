@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.captain" "\0"
-            VALUE "FileDescription", "real_estate_app_fix" "\0"
+            VALUE "FileDescription", "aqarat" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "real_estate_app_fix" "\0"
+            VALUE "InternalName", "aqarat" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.captain. All rights reserved." "\0"
-            VALUE "OriginalFilename", "real_estate_app_fix.exe" "\0"
-            VALUE "ProductName", "real_estate_app_fix" "\0"
+            VALUE "OriginalFilename", "aqarat.exe" "\0"
+            VALUE "ProductName", "aqarat" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

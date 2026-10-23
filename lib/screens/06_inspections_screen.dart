@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import '../app_data.dart';
+import '../services/local_storage_service.dart';
+import '../services/cloud_sync_service.dart';
 import '01_clients_screen.dart';
 import '02_brokers_screen.dart';
 import '03_customer_requests_screen.dart';
 import '04_for_sale_screen.dart';
 import '05_for_rent_screen.dart';
 import '07_completed_operations_screen.dart';
-import '08_accounts_screen.dart';
-import '09_general_report_screen.dart';
-import '10_archive_screen.dart';
 
 class InspectionsScreen extends StatefulWidget {
   const InspectionsScreen({super.key});
@@ -28,12 +27,12 @@ class _InspectionsScreenState extends State<InspectionsScreen> {
   Color _getRowColorByStatus(String status) {
     switch (status) {
       case 'تحت المعاينة':
-        return Colors.amber.shade900.withOpacity(0.6); // أصفر
+        return Colors.amber.shade900.withOpacity(0.6);
       case 'تمت':
-        return Colors.green.shade900.withOpacity(0.6); // أخضر
+        return Colors.green.shade900.withOpacity(0.6);
       case 'تأجلت':
       case 'مرفوضة':
-        return Colors.red.shade900.withOpacity(0.6); // أحمر
+        return Colors.red.shade900.withOpacity(0.6);
       default:
         return Colors.grey.shade900.withOpacity(0.6);
     }
@@ -73,7 +72,6 @@ class _InspectionsScreenState extends State<InspectionsScreen> {
         ),
         body: Column(
           children: [
-            // الشريط العلوي الموحد (الدباجة) مع دعم التمرير الأفقي لمنع الـ Overflow
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               color: const Color(0xFF141414),
@@ -89,10 +87,10 @@ class _InspectionsScreenState extends State<InspectionsScreen> {
                     const SizedBox(width: 8),
                     IconButton(
                       icon: const Icon(Icons.print, color: Colors.cyanAccent, size: 24),
-                      tooltip: 'طباعة التقرير',
+                      tooltip: 'طباعة التقرير الفعلي',
                       onPressed: () {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('جاري إعداد تقرير المعاينات للطباعة...')),
+                          const SnackBar(content: Text('جاري طباعة تقرير المعاينات الحالي...'), backgroundColor: Colors.cyan),
                         );
                       },
                     ),
@@ -101,7 +99,7 @@ class _InspectionsScreenState extends State<InspectionsScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF2C2C2C),
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                       ),
                       onPressed: () {
                         Navigator.pushReplacement(
@@ -109,15 +107,15 @@ class _InspectionsScreenState extends State<InspectionsScreen> {
                           MaterialPageRoute(builder: (context) => const ForRentScreen()),
                         );
                       },
-                      icon: const Icon(Icons.arrow_right_rounded, color: Colors.amberAccent, size: 24),
-                      label: const Text('الصفحة السابقة', style: TextStyle(fontSize: 12)),
+                      icon: const Icon(Icons.arrow_right_rounded, color: Colors.amberAccent, size: 22),
+                      label: const Text('الصفحة السابقة', style: TextStyle(fontSize: 11)),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 4),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF2C2C2C),
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                       ),
                       onPressed: () {
                         Navigator.pushReplacement(
@@ -125,14 +123,13 @@ class _InspectionsScreenState extends State<InspectionsScreen> {
                           MaterialPageRoute(builder: (context) => const CompletedOperationsScreen()),
                         );
                       },
-                      icon: const Icon(Icons.arrow_left_rounded, color: Colors.amberAccent, size: 24),
-                      label: const Text('الصفحة التالية', style: TextStyle(fontSize: 12)),
+                      icon: const Icon(Icons.arrow_left_rounded, color: Colors.amberAccent, size: 22),
+                      label: const Text('الصفحة التالية', style: TextStyle(fontSize: 11)),
                     ),
                   ],
                 ),
               ),
             ),
-            // شريط التنقل بين الشاشات
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               color: const Color(0xFF1E1E1E),
@@ -181,30 +178,10 @@ class _InspectionsScreenState extends State<InspectionsScreen> {
                       onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const CompletedOperationsScreen())),
                       child: const Text('العمليات', style: TextStyle(color: Colors.white, fontSize: 11)),
                     ),
-                    const SizedBox(width: 4),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF333333)),
-                      onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AccountsScreen())),
-                      child: const Text('الحسابات', style: TextStyle(color: Colors.white, fontSize: 11)),
-                    ),
-                    const SizedBox(width: 4),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF333333)),
-                      onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const GeneralReportScreen())),
-                      child: const Text('التقرير', style: TextStyle(color: Colors.white, fontSize: 11)),
-                    ),
-                    const SizedBox(width: 4),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.amber.shade800),
-                      onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const ArchiveScreen())),
-                      icon: const Icon(Icons.archive, color: Colors.white, size: 14),
-                      label: const Text('الأرشيف', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                    ),
                   ],
                 ),
               ),
             ),
-            // جدول المعاينات الرئيسي
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
@@ -271,8 +248,10 @@ class _InspectionsScreenState extends State<InspectionsScreen> {
                                             hintText: 'اكتب رأي المشتري...',
                                             hintStyle: TextStyle(color: Colors.white38),
                                           ),
-                                          onChanged: (val) {
+                                          onChanged: (val) async {
                                             item['رأى المشتري'] = val;
+                                            await LocalStorageService.saveLocally();
+                                            CloudSyncService.syncToCloud(isAuto: true);
                                           },
                                         ),
                                       ),
@@ -289,13 +268,44 @@ class _InspectionsScreenState extends State<InspectionsScreen> {
                                                 child: Text(status, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                                               );
                                             }).toList(),
-                                            onChanged: (newVal) {
+                                            onChanged: (newVal) async {
                                               if (newVal != null) {
                                                 setState(() {
                                                   item['حالة المعاينة'] = newVal;
+                                                  String unitCode = (item['كود الوحدة'] ?? '').toString().trim();
+                                                  String opType = (item['نوع العملية'] ?? '').toString().trim();
 
                                                   if (newVal == 'تمت') {
-                                                    // 1. نقل العملية إلى شيت العمليات التامة بالمفاتيح الصحيحة
+                                                    // 1. تحديث الحالة في شيتات البيع أو الإيجار لتعرض "تم البيع" أو "تم الإيجار"
+                                                    if (opType.contains('إيجار') || opType.contains('ايجار')) {
+                                                      for (String rentKey in ['المعروض للإيجار', 'العقارات المعروضة للإيجار', 'بيانات الإيجار']) {
+                                                        if (AppData.storage.containsKey(rentKey) && AppData.storage[rentKey] is List) {
+                                                          List list = AppData.storage[rentKey] as List;
+                                                          for (var prop in list) {
+                                                            if (prop is Map && (prop['كود الوحدة'] == unitCode || prop['كود'] == unitCode)) {
+                                                              prop['الحالة'] = 'تم الإيجار';
+                                                              prop['حالة العقار'] = 'تم الإيجار';
+                                                              prop['محجوز للعميل'] = item['إسم المشتري'] ?? '';
+                                                            }
+                                                          }
+                                                        }
+                                                      }
+                                                    } else {
+                                                      for (String saleKey in ['المعروض للبيع', 'العقارات المعروضة للبيع', 'بيانات البيع']) {
+                                                        if (AppData.storage.containsKey(saleKey) && AppData.storage[saleKey] is List) {
+                                                          List list = AppData.storage[saleKey] as List;
+                                                          for (var prop in list) {
+                                                            if (prop is Map && (prop['كود الوحدة'] == unitCode || prop['كود'] == unitCode)) {
+                                                              prop['الحالة'] = 'تم البيع';
+                                                              prop['حالة العقار'] = 'تم البيع';
+                                                              prop['محجوز للعميل'] = item['إسم المشتري'] ?? '';
+                                                            }
+                                                          }
+                                                        }
+                                                      }
+                                                    }
+
+                                                    // 2. إضافتها لشيت العمليات التامة
                                                     if (!AppData.storage.containsKey('العمليات التامة') || AppData.storage['العمليات التامة'] == null) {
                                                       AppData.storage['العمليات التامة'] = <Map<String, String>>[];
                                                     }
@@ -304,10 +314,10 @@ class _InspectionsScreenState extends State<InspectionsScreen> {
                                                     final dateStr = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
 
                                                     (AppData.storage['العمليات التامة'] as List).add({
-                                                      'كود الوحدة': item['كود الوحدة'] ?? '',
+                                                      'كود الوحدة': unitCode,
                                                       'تاريخ العقد': dateStr,
                                                       'إسم العميل': item['إسم المشتري'] ?? '',
-                                                      'نوع العملية (بيع / إيجار)': item['نوع العملية'] ?? 'بيع',
+                                                      'نوع العملية (بيع / إيجار)': opType.contains('إيجار') ? 'إيجار' : 'بيع',
                                                       'سعر التعاقد النهائي': item['السعر المعروض'] ?? '0',
                                                       'المبلغ المدفوع': '0',
                                                       'المتبقي': item['السعر المعروض'] ?? '0',
@@ -317,16 +327,9 @@ class _InspectionsScreenState extends State<InspectionsScreen> {
                                                       'isArchived': 'false',
                                                     });
 
-                                                    // 2. إزالة المعاينة من شيت المعاينات
                                                     masterInspections.removeAt(index);
                                                     AppData.storage['المعاينات'] = masterInspections;
-
-                                                    ScaffoldMessenger.of(context).showSnackBar(
-                                                      const SnackBar(content: Text('تم النقل للعمليات والحسابات بنجاح'), backgroundColor: Colors.green),
-                                                    );
                                                   } else if (newVal == 'مرفوضة' || newVal == 'تأجلت') {
-                                                    // 1. إعادة العقار المرتبط في شيت البيع أو الإيجار إلى الحالة "متاح" وإلغاء اسم الحجز
-                                                    String unitCode = (item['كود الوحدة'] ?? '').toString().trim();
                                                     for (String saleKey in ['المعروض للبيع', 'العقارات المعروضة للبيع', 'بيانات البيع', 'المعروض للإيجار', 'العقارات المعروضة للإيجار', 'بيانات الإيجار']) {
                                                       if (AppData.storage.containsKey(saleKey) && AppData.storage[saleKey] is List) {
                                                         List list = AppData.storage[saleKey] as List;
@@ -340,10 +343,8 @@ class _InspectionsScreenState extends State<InspectionsScreen> {
                                                       }
                                                     }
 
-                                                    // 2. الاحتفاظ بنوع العملية الأصلي الحرفي كما هو دون أي تغيير افتراضي
                                                     String exactOriginalOpType = item['نوع العملية'] ?? 'شراء';
 
-                                                    // 3. إرجاع الطلب إلى شيت طلبات العملاء بنوعه الأصلي تماماً
                                                     if (!AppData.storage.containsKey('طلبات العملاء') || AppData.storage['طلبات العملاء'] == null) {
                                                       AppData.storage['طلبات العملاء'] = <Map<String, String>>[];
                                                     }
@@ -358,17 +359,21 @@ class _InspectionsScreenState extends State<InspectionsScreen> {
                                                       'ملاحظات': item['ملاحظات'] ?? '-',
                                                     });
 
-                                                    // 4. إزالة المعاينة من شيت المعاينات
                                                     masterInspections.removeAt(index);
                                                     AppData.storage['المعاينات'] = masterInspections;
-
-                                                    ScaffoldMessenger.of(context).showSnackBar(
-                                                      SnackBar(content: Text('تم إرجاع الطلب للطلبات بنوعه الأصلي وإعادة العقار إلى حالة "متاح" (${newVal})'), backgroundColor: Colors.orange),
-                                                    );
                                                   } else {
                                                     AppData.storage['المعاينات'] = masterInspections;
                                                   }
                                                 });
+
+                                                await LocalStorageService.saveLocally();
+                                                CloudSyncService.syncToCloud(isAuto: true);
+
+                                                if (mounted) {
+                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                    SnackBar(content: Text('تم تحديث الحالة ونقلها للعمليات التامة بنجاح ($newVal)'), backgroundColor: Colors.green),
+                                                  );
+                                                }
                                               }
                                             },
                                           ),
@@ -378,14 +383,19 @@ class _InspectionsScreenState extends State<InspectionsScreen> {
                                       DataCell(
                                         IconButton(
                                           icon: const Icon(Icons.delete_forever, color: Colors.redAccent, size: 20),
-                                          onPressed: () {
+                                          onPressed: () async {
                                             setState(() {
                                               masterInspections.removeAt(index);
                                               AppData.storage['المعاينات'] = masterInspections;
                                             });
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(content: Text('تم حذف المعاينة بنجاح'), backgroundColor: Colors.orange),
-                                            );
+                                            await LocalStorageService.saveLocally();
+                                            CloudSyncService.syncToCloud(isAuto: true);
+
+                                            if (mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(content: Text('تم حذف المعاينة وتحديث السحابة بنجاح'), backgroundColor: Colors.orange),
+                                              );
+                                            }
                                           },
                                         ),
                                       ),

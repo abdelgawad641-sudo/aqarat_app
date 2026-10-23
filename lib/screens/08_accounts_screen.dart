@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../app_data.dart';
 import '../app_dropdowns.dart';
+import '../services/local_storage_service.dart';
+import '../services/cloud_sync_service.dart';
 import '01_clients_screen.dart';
 import '02_brokers_screen.dart';
 import '03_customer_requests_screen.dart';
@@ -24,22 +26,32 @@ class _AccountsScreenState extends State<AccountsScreen> {
     final amountController = TextEditingController();
     final notesController = TextEditingController();
 
-    void saveExpense(BuildContext dialogContext) {
+    void saveExpense(BuildContext dialogContext) async {
       if (amountController.text.trim().isNotEmpty) {
         final now = DateTime.now();
         final dateStr = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
 
-        if (!AppData.storage.containsKey('المصروفات') || AppData.storage['المصروفات'] == null) {
-          AppData.storage['المصروفات'] = <Map<String, String>>[];
-        }
-        (AppData.storage['المصروفات'] as List).add({
-          'التاريخ': dateStr,
-          'البيان': selectedExpenseCategory,
-          'المصروفات': amountController.text.trim(),
-          'ملاحظات': notesController.text.trim(),
+        setState(() {
+          if (!AppData.storage.containsKey('المصروفات') || AppData.storage['المصروفات'] == null) {
+            AppData.storage['المصروفات'] = <Map<String, String>>[];
+          }
+          (AppData.storage['المصروفات'] as List).add({
+            'التاريخ': dateStr,
+            'البيان': selectedExpenseCategory,
+            'المصروفات': amountController.text.trim(),
+            'ملاحظات': notesController.text.trim(),
+          });
         });
-        setState(() {});
+
+        await LocalStorageService.saveLocally();
+        CloudSyncService.syncToCloud(isAuto: true);
+
         Navigator.pop(dialogContext);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('تم حفظ ومزامنة المصروف سحابياً بنجاح'), backgroundColor: Colors.green),
+          );
+        }
       }
     }
 
@@ -112,7 +124,6 @@ class _AccountsScreenState extends State<AccountsScreen> {
   Widget build(BuildContext context) {
     List<Map<String, String>> accountsRows = [];
 
-    // 1. جلب العمليات التامة
     List rawCompleted = (AppData.storage['العمليات التامة'] as List?) ?? [];
     for (var op in rawCompleted) {
       if (op is Map) {
@@ -135,7 +146,6 @@ class _AccountsScreenState extends State<AccountsScreen> {
       }
     }
 
-    // 2. جلب العمليات المؤرشفة
     List rawArchived = (AppData.storage['أرشيف العمليات'] as List?) ?? [];
     for (var op in rawArchived) {
       if (op is Map) {
@@ -158,7 +168,6 @@ class _AccountsScreenState extends State<AccountsScreen> {
       }
     }
 
-    // 3. جلب المصروفات اليدوية
     List rawExpenses = (AppData.storage['المصروفات'] as List?) ?? [];
     for (var exp in rawExpenses) {
       if (exp is Map) {
@@ -209,10 +218,10 @@ class _AccountsScreenState extends State<AccountsScreen> {
                     const SizedBox(width: 8),
                     IconButton(
                       icon: const Icon(Icons.print, color: Colors.cyanAccent, size: 24),
-                      tooltip: 'طباعة التقرير',
+                      tooltip: 'طباعة التقرير الفعلي',
                       onPressed: () {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('جاري إعداد تقرير الحسابات للطباعة...')),
+                          const SnackBar(content: Text('جاري طباعة تقرير الحسابات الحالي...'), backgroundColor: Colors.cyan),
                         );
                       },
                     ),
@@ -338,7 +347,6 @@ class _AccountsScreenState extends State<AccountsScreen> {
                 ),
               ),
             ),
-            // جدول الحسابات بالـ DataTable والحدود المربعة الواضحة
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(8.0),

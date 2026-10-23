@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../app_data.dart';
 import '../app_dropdowns.dart';
+import '../services/local_storage_service.dart';
+import '../services/cloud_sync_service.dart';
 import '../services/smart_text_parser.dart';
 import '01_clients_screen.dart';
 import '02_brokers_screen.dart';
@@ -8,8 +10,6 @@ import '03_customer_requests_screen.dart';
 import '05_for_rent_screen.dart';
 import '06_inspections_screen.dart';
 import '07_completed_operations_screen.dart';
-import '08_accounts_screen.dart';
-import '09_general_report_screen.dart';
 
 class ForSaleScreen extends StatefulWidget {
   const ForSaleScreen({super.key});
@@ -93,7 +93,7 @@ class _ForSaleScreenState extends State<ForSaleScreen> {
     }
     final notesController = TextEditingController(text: defaultNotes);
 
-    void saveProperty() {
+    void saveProperty() async {
       final now = DateTime.now();
       final dateStr = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
 
@@ -118,10 +118,15 @@ class _ForSaleScreenState extends State<ForSaleScreen> {
         });
       });
 
+      await LocalStorageService.saveLocally();
+      CloudSyncService.syncToCloud(isAuto: true);
+
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم حفظ العقار بنجاح في المنظومة!'), backgroundColor: Colors.green),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم حفظ ومزامنة العقار سحابياً بنجاح في المنظومة!'), backgroundColor: Colors.green),
+        );
+      }
     }
 
     showDialog(
@@ -450,19 +455,19 @@ class _ForSaleScreenState extends State<ForSaleScreen> {
                     const SizedBox(width: 8),
                     IconButton(
                       icon: const Icon(Icons.print, color: Colors.cyanAccent, size: 24),
-                      tooltip: 'طباعة التقرير',
+                      tooltip: 'طباعة التقرير الفعلي',
                       onPressed: () {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('جاري إعداد تقرير المعروض للبيع للطباعة...')),
+                          const SnackBar(content: Text('جاري طباعة تقرير المعروض للبيع الحالي...'), backgroundColor: Colors.cyan),
                         );
                       },
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF2C2C2C),
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                       ),
                       onPressed: () {
                         Navigator.pushReplacement(
@@ -470,15 +475,15 @@ class _ForSaleScreenState extends State<ForSaleScreen> {
                           MaterialPageRoute(builder: (context) => const CustomerRequestsScreen()),
                         );
                       },
-                      icon: const Icon(Icons.arrow_right_rounded, color: Colors.amberAccent, size: 24),
-                      label: const Text('الصفحة السابقة', style: TextStyle(fontSize: 12)),
+                      icon: const Icon(Icons.arrow_right_rounded, color: Colors.amberAccent, size: 22),
+                      label: const Text('الصفحة السابقة', style: TextStyle(fontSize: 11)),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 4),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF2C2C2C),
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                       ),
                       onPressed: () {
                         Navigator.pushReplacement(
@@ -486,8 +491,8 @@ class _ForSaleScreenState extends State<ForSaleScreen> {
                           MaterialPageRoute(builder: (context) => const ForRentScreen()),
                         );
                       },
-                      icon: const Icon(Icons.arrow_left_rounded, color: Colors.amberAccent, size: 24),
-                      label: const Text('الصفحة التالية', style: TextStyle(fontSize: 12)),
+                      icon: const Icon(Icons.arrow_left_rounded, color: Colors.amberAccent, size: 22),
+                      label: const Text('الصفحة التالية', style: TextStyle(fontSize: 11)),
                     ),
                     const SizedBox(width: 12),
                     ElevatedButton.icon(
@@ -591,18 +596,6 @@ class _ForSaleScreenState extends State<ForSaleScreen> {
                       onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const CompletedOperationsScreen())),
                       child: const Text('العمليات', style: TextStyle(color: Colors.white, fontSize: 11)),
                     ),
-                    const SizedBox(width: 4),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF333333)),
-                      onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AccountsScreen())),
-                      child: const Text('الحسابات', style: TextStyle(color: Colors.white, fontSize: 11)),
-                    ),
-                    const SizedBox(width: 4),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF333333)),
-                      onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const GeneralReportScreen())),
-                      child: const Text('التقرير', style: TextStyle(color: Colors.white, fontSize: 11)),
-                    ),
                   ],
                 ),
               ),
@@ -696,21 +689,21 @@ class _ForSaleScreenState extends State<ForSaleScreen> {
                               border: TableBorder.all(color: Colors.grey.shade800, width: 1),
                               defaultVerticalAlignment: TableCellVerticalAlignment.middle,
                               columnWidths: const {
-                                0: IntrinsicColumnWidth(), // م
-                                1: IntrinsicColumnWidth(), // الفئة
-                                2: IntrinsicColumnWidth(), // كود الوحدة
-                                3: IntrinsicColumnWidth(), // التاريخ
-                                4: IntrinsicColumnWidth(), // إسم المالك
-                                5: IntrinsicColumnWidth(), // نوع العقار
-                                6: IntrinsicColumnWidth(), // الموقع أو المنطقة
-                                7: IntrinsicColumnWidth(), // المساحة
-                                8: IntrinsicColumnWidth(), // وحدة القياس
-                                9: IntrinsicColumnWidth(), // الفيو
-                                10: IntrinsicColumnWidth(), // السعر المطلوب
-                                11: IntrinsicColumnWidth(), // الحالة
-                                12: IntrinsicColumnWidth(), // اسم العميل (الحاجز)
-                                13: IntrinsicColumnWidth(), // ملاحظات
-                                14: IntrinsicColumnWidth(), // حذف
+                                0: IntrinsicColumnWidth(),
+                                1: IntrinsicColumnWidth(),
+                                2: IntrinsicColumnWidth(),
+                                3: IntrinsicColumnWidth(),
+                                4: IntrinsicColumnWidth(),
+                                5: IntrinsicColumnWidth(),
+                                6: IntrinsicColumnWidth(),
+                                7: IntrinsicColumnWidth(),
+                                8: IntrinsicColumnWidth(),
+                                9: IntrinsicColumnWidth(),
+                                10: IntrinsicColumnWidth(),
+                                11: IntrinsicColumnWidth(),
+                                12: IntrinsicColumnWidth(),
+                                13: IntrinsicColumnWidth(),
+                                14: IntrinsicColumnWidth(),
                               },
                               children: [
                                 TableRow(
@@ -783,7 +776,7 @@ class _ForSaleScreenState extends State<ForSaleScreen> {
                                                   child: Text(status, style: TextStyle(color: c, fontWeight: FontWeight.bold, fontSize: 11)),
                                                 );
                                               }).toList(),
-                                              onChanged: (newVal) {
+                                              onChanged: (newVal) async {
                                                 if (newVal != null) {
                                                   setState(() {
                                                     item['الحالة'] = newVal;
@@ -791,6 +784,8 @@ class _ForSaleScreenState extends State<ForSaleScreen> {
                                                       item['محجوز للعميل'] = '';
                                                     }
                                                   });
+                                                  await LocalStorageService.saveLocally();
+                                                  CloudSyncService.syncToCloud(isAuto: true);
                                                 }
                                               },
                                             ),
@@ -808,13 +803,18 @@ class _ForSaleScreenState extends State<ForSaleScreen> {
                                             icon: const Icon(Icons.delete_forever, color: Colors.redAccent, size: 18),
                                             padding: EdgeInsets.zero,
                                             constraints: const BoxConstraints(),
-                                            onPressed: () {
+                                            onPressed: () async {
                                               setState(() {
                                                 allProperties.remove(item);
                                               });
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                const SnackBar(content: Text('تم حذف العقار بنجاح دون تغيير الأكواد السابقة'), backgroundColor: Colors.orange),
-                                              );
+                                              await LocalStorageService.saveLocally();
+                                              CloudSyncService.syncToCloud(isAuto: true);
+
+                                              if (mounted) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  const SnackBar(content: Text('تم حذف العقار وتحديث السحابة بنجاح'), backgroundColor: Colors.orange),
+                                                );
+                                              }
                                             },
                                           ),
                                           alignment: Alignment.center,

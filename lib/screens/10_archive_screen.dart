@@ -38,34 +38,6 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
     super.dispose();
   }
 
-  String _getFallbackPhone(String clientName) {
-    if (clientName.trim().isEmpty || clientName.trim() == '-') return '-';
-    String targetName = clientName.trim().toLowerCase();
-
-    var clientsList = AppData.storage['العملاء'];
-    if (clientsList != null) {
-      for (var c in clientsList) {
-        if (c is Map) {
-          String cNameInSheet = (c['إسم العميل'] ?? c['اسم العميل'] ?? c['اسم المشتري'] ?? '').toString().trim().toLowerCase();
-
-          if (cNameInSheet == targetName || cNameInSheet.contains(targetName)) {
-            String p1 = (c['رقم التليفون 1'] ?? c['رقم التليفون1'] ?? c['رقم الهاتف'] ?? '').toString().trim();
-            String p2 = (c['رقم التليفون 2'] ?? c['رقم التليفون2'] ?? c['الموبايل'] ?? '').toString().trim();
-
-            List<String> found = [];
-            if (p1.isNotEmpty && p1 != '-' && p1 != 'null') found.add(p1);
-            if (p2.isNotEmpty && p2 != '-' && p2 != 'null') found.add(p2);
-
-            if (found.isNotEmpty) {
-              return found.join('\n');
-            }
-          }
-        }
-      }
-    }
-    return '-';
-  }
-
   @override
   Widget build(BuildContext context) {
     var rawArchived = AppData.storage['أرشيف العمليات'];
@@ -79,12 +51,6 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
             cleanedMap[key.toString()] = value?.toString() ?? '';
           });
 
-          String cNameCheck = cleanedMap['إسم العميل'] ?? cleanedMap['اسم العميل'] ?? cleanedMap['اسم المشتري'] ?? '';
-          String currentPhone = cleanedMap['رقم الموبايل'] ?? cleanedMap['رقم الهاتف'] ?? '';
-          if ((currentPhone.isEmpty || currentPhone == '-') && cNameCheck.isNotEmpty) {
-            cleanedMap['رقم الموبايل'] = _getFallbackPhone(cNameCheck);
-          }
-
           archiveRows.add(cleanedMap);
         }
       }
@@ -96,13 +62,11 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
         String q = _searchQuery.trim().toLowerCase();
         String clientName = (row['إسم العميل'] ?? row['اسم العميل'] ?? row['اسم المشتري'] ?? '').toLowerCase();
         String unitCode = (row['كود الوحدة'] ?? '').toLowerCase();
-        String phones = (row['رقم الموبايل'] ?? row['رقم الهاتف'] ?? '').toLowerCase();
         String opType = (row['نوع العملية (بيع / إيجار)'] ?? row['نوع العملية'] ?? '').toLowerCase();
         String propType = (row['نوع العقار'] ?? '').toLowerCase();
 
         matchesSearch = clientName.contains(q) ||
             unitCode.contains(q) ||
-            phones.contains(q) ||
             opType.contains(q) ||
             propType.contains(q);
       }
@@ -260,7 +224,7 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
                       controller: _searchController,
                       style: const TextStyle(color: Colors.white, fontSize: 13),
                       decoration: InputDecoration(
-                        hintText: 'بحث شامل: (اسم العميل، رقم الموبايل، كود الوحدة...).',
+                        hintText: 'بحث شامل: (اسم العميل، كود الوحدة...).',
                         hintStyle: const TextStyle(color: Colors.grey, fontSize: 12),
                         prefixIcon: const Icon(Icons.search, color: Colors.amberAccent),
                         suffixIcon: _searchController.text.isNotEmpty
@@ -356,7 +320,6 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
                                 DataColumn(label: Text('كود الوحدة', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.amberAccent))),
                                 DataColumn(label: Text('تاريخ العقد', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white))),
                                 DataColumn(label: Text('إسم العميل', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white))),
-                                DataColumn(label: Text('رقم الموبايل', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.greenAccent))),
                                 DataColumn(label: Text('نوع العقار', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyanAccent))),
                                 DataColumn(label: Text('نوع العملية', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white))),
                                 DataColumn(label: Text('سعر التعاقد', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.amberAccent))),
@@ -372,11 +335,6 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
                                   final rowColor = index.isEven ? const Color(0xFF1E1E1E) : const Color(0xFF252525);
 
                                   String cName = row['إسم العميل'] ?? row['اسم العميل'] ?? row['اسم المشتري'] ?? '';
-                                  String phoneVal = row['رقم الموبايل'] ?? row['رقم الهاتف'] ?? '';
-                                  if (phoneVal.isEmpty || phoneVal == '-') {
-                                    phoneVal = _getFallbackPhone(cName);
-                                  }
-
                                   String propType = row['نوع العقار'] ?? '';
 
                                   return DataRow(
@@ -386,13 +344,6 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
                                       DataCell(Text(row['كود الوحدة'] ?? '', style: const TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold))),
                                       DataCell(Text(row['تاريخ العقد'] ?? '', style: const TextStyle(color: Colors.white))),
                                       DataCell(Text(cName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600))),
-                                      DataCell(
-                                        Text(
-                                          phoneVal,
-                                          style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 12),
-                                          maxLines: 2,
-                                        ),
-                                      ),
                                       DataCell(Text(propType.trim().isNotEmpty ? propType : '-', style: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold))),
                                       DataCell(Text(row['نوع العملية (بيع / إيجار)'] ?? row['نوع العملية'] ?? 'بيع', style: const TextStyle(color: Colors.white))),
                                       DataCell(Text(row['سعر التعاقد النهائي'] ?? '0', style: const TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold))),
@@ -429,7 +380,7 @@ class _ArchiveScreenState extends State<ArchiveScreen> {
                                 } else {
                                   return DataRow(
                                     color: WidgetStateProperty.resolveWith<Color?>((states) => index.isEven ? const Color(0xFF1E1E1E) : const Color(0xFF252525)),
-                                    cells: List.generate(13, (cellIndex) => const DataCell(SizedBox.shrink())),
+                                    cells: List.generate(12, (cellIndex) => const DataCell(SizedBox.shrink())),
                                   );
                                 }
                               }),

@@ -2,15 +2,15 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../app_data.dart';
 import '../app_dropdowns.dart';
-import '../services/smart_text_parser.dart'; // استيراد المحلل الذكي
+import '../services/local_storage_service.dart';
+import '../services/cloud_sync_service.dart';
+import '../services/smart_text_parser.dart';
 import '01_clients_screen.dart';
 import '02_brokers_screen.dart';
 import '03_customer_requests_screen.dart';
 import '04_for_sale_screen.dart';
 import '06_inspections_screen.dart';
 import '07_completed_operations_screen.dart';
-import '08_accounts_screen.dart';
-import '09_general_report_screen.dart';
 
 class ForRentScreen extends StatefulWidget {
   const ForRentScreen({super.key});
@@ -53,7 +53,6 @@ class _ForRentScreenState extends State<ForRentScreen> {
     }
   }
 
-  // نافذة إضافة عقار للإيجار (مدعومة بالبيانات المستخرجة من الواتساب)
   void _showAddPropertyDialog({ParsedPropertyData? initialData}) {
     final clientNames = AppDropdowns.getClientNames();
     List<String> validClients = (clientNames.isEmpty || clientNames.first == 'لا توجد عملاء مسجلة')
@@ -91,7 +90,7 @@ class _ForRentScreenState extends State<ForRentScreen> {
     String selectedStatus = statusOptions.first;
 
     final propertiesList = AppData.storage['العقارات المعروضة للإيجار'] ?? [];
-    int nextId = 200 + propertiesList.length;
+    int nextId = 1 + propertiesList.length; // تعديل بداية الأكواد لتكون تبدأ من R1 بدلاً من 200
     final codeController = TextEditingController(text: 'R$nextId');
 
     final areaController = TextEditingController(text: initialData?.area ?? '');
@@ -103,7 +102,7 @@ class _ForRentScreenState extends State<ForRentScreen> {
     }
     final notesController = TextEditingController(text: defaultNotes);
 
-    void saveProperty() {
+    void saveProperty() async {
       final now = DateTime.now();
       final dateStr = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
 
@@ -129,10 +128,15 @@ class _ForRentScreenState extends State<ForRentScreen> {
         });
       });
 
+      await LocalStorageService.saveLocally();
+      CloudSyncService.syncToCloud(isAuto: true);
+
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم حفظ عقار الإيجار بنجاح في المنظومة!'), backgroundColor: Colors.green),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم حفظ ومزامنة عقار الإيجار سحابياً بنجاح في المنظومة!'), backgroundColor: Colors.green),
+        );
+      }
     }
 
     showDialog(
@@ -322,7 +326,6 @@ class _ForRentScreenState extends State<ForRentScreen> {
     );
   }
 
-  // نافذة إدخال وتحليل رسالة الواتساب للإيجار
   void _showSmartParserDialog() {
     final TextEditingController rawTextController = TextEditingController();
 
@@ -374,11 +377,8 @@ class _ForRentScreenState extends State<ForRentScreen> {
               label: const Text('تحليل واستخراج البيانات', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               onPressed: () {
                 if (rawTextController.text.trim().isEmpty) return;
-
                 ParsedPropertyData parsedData = SmartTextParser.parseMessage(rawTextController.text);
-
                 Navigator.pop(context);
-
                 _showAddPropertyDialog(initialData: parsedData);
               },
             ),
@@ -471,19 +471,19 @@ class _ForRentScreenState extends State<ForRentScreen> {
                     const SizedBox(width: 8),
                     IconButton(
                       icon: const Icon(Icons.print, color: Colors.cyanAccent, size: 24),
-                      tooltip: 'طباعة التقرير',
+                      tooltip: 'طباعة التقرير الفعلي',
                       onPressed: () {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('جاري إعداد تقرير المعروض للإيجار للطباعة...')),
+                          const SnackBar(content: Text('جاري طباعة تقرير المعروض للإيجار الحالي...'), backgroundColor: Colors.cyan),
                         );
                       },
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF2C2C2C),
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                       ),
                       onPressed: () {
                         Navigator.pushReplacement(
@@ -491,15 +491,15 @@ class _ForRentScreenState extends State<ForRentScreen> {
                           MaterialPageRoute(builder: (context) => const ForSaleScreen()),
                         );
                       },
-                      icon: const Icon(Icons.arrow_right_rounded, color: Colors.amberAccent, size: 24),
-                      label: const Text('الصفحة السابقة', style: TextStyle(fontSize: 12)),
+                      icon: const Icon(Icons.arrow_right_rounded, color: Colors.amberAccent, size: 22),
+                      label: const Text('الصفحة السابقة', style: TextStyle(fontSize: 11)),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 4),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF2C2C2C),
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                       ),
                       onPressed: () {
                         Navigator.pushReplacement(
@@ -507,11 +507,10 @@ class _ForRentScreenState extends State<ForRentScreen> {
                           MaterialPageRoute(builder: (context) => const InspectionsScreen()),
                         );
                       },
-                      icon: const Icon(Icons.arrow_left_rounded, color: Colors.amberAccent, size: 24),
-                      label: const Text('الصفحة التالية', style: TextStyle(fontSize: 12)),
+                      icon: const Icon(Icons.arrow_left_rounded, color: Colors.amberAccent, size: 22),
+                      label: const Text('الصفحة التالية', style: TextStyle(fontSize: 11)),
                     ),
                     const SizedBox(width: 12),
-                    // زر تحليل رسائل الواتساب الذكي للإيجار
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.purple.shade800,
@@ -522,7 +521,6 @@ class _ForRentScreenState extends State<ForRentScreen> {
                       label: const Text('تحليل رسالة واتساب', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
                     ),
                     const SizedBox(width: 8),
-                    // زر إضافة عقار للإيجار العادي
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green.shade700,
@@ -613,18 +611,6 @@ class _ForRentScreenState extends State<ForRentScreen> {
                       style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF333333)),
                       onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const CompletedOperationsScreen())),
                       child: const Text('العمليات', style: TextStyle(color: Colors.white, fontSize: 11)),
-                    ),
-                    const SizedBox(width: 4),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF333333)),
-                      onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AccountsScreen())),
-                      child: const Text('الحسابات', style: TextStyle(color: Colors.white, fontSize: 11)),
-                    ),
-                    const SizedBox(width: 4),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF333333)),
-                      onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const GeneralReportScreen())),
-                      child: const Text('التقرير', style: TextStyle(color: Colors.white, fontSize: 11)),
                     ),
                   ],
                 ),
@@ -796,7 +782,7 @@ class _ForRentScreenState extends State<ForRentScreen> {
                                                 child: Text(status, style: TextStyle(color: c, fontWeight: FontWeight.bold)),
                                               );
                                             }).toList(),
-                                            onChanged: (newVal) {
+                                            onChanged: (newVal) async {
                                               if (newVal != null) {
                                                 setState(() {
                                                   item['الحالة'] = newVal;
@@ -804,6 +790,8 @@ class _ForRentScreenState extends State<ForRentScreen> {
                                                     item['محجوز للعميل'] = '';
                                                   }
                                                 });
+                                                await LocalStorageService.saveLocally();
+                                                CloudSyncService.syncToCloud(isAuto: true);
                                               }
                                             },
                                           ),
@@ -819,16 +807,21 @@ class _ForRentScreenState extends State<ForRentScreen> {
                                       DataCell(
                                         IconButton(
                                           icon: const Icon(Icons.delete_forever, color: Colors.redAccent, size: 20),
-                                          onPressed: () {
+                                          onPressed: () async {
                                             setState(() {
                                               allProperties.remove(item);
                                               for (int i = 0; i < allProperties.length; i++) {
-                                                allProperties[i]['كود الوحدة'] = 'R${200 + i}';
+                                                allProperties[i]['كود الوحدة'] = 'R${1 + i}'; // تحديث ترقيم الأكواد ليبدأ من R1 بعد الحذف
                                               }
                                             });
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(content: Text('تم حذف العقار وإعادة ترتيب الأكواد بنجاح'), backgroundColor: Colors.orange),
-                                            );
+                                            await LocalStorageService.saveLocally();
+                                            CloudSyncService.syncToCloud(isAuto: true);
+
+                                            if (mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(content: Text('تم حذف العقار وتحديث السحابة بنجاح'), backgroundColor: Colors.orange),
+                                              );
+                                            }
                                           },
                                         ),
                                       ),

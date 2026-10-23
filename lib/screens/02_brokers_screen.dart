@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import '../app_data.dart';
+import '../services/local_storage_service.dart';
+import '../services/cloud_sync_service.dart';
 import '01_clients_screen.dart';
 import '03_customer_requests_screen.dart';
 import '04_for_sale_screen.dart';
 import '05_for_rent_screen.dart';
 import '06_inspections_screen.dart';
 import '07_completed_operations_screen.dart';
-import '08_accounts_screen.dart';
-import '09_general_report_screen.dart';
 
 class BrokersScreen extends StatefulWidget {
   const BrokersScreen({super.key});
@@ -87,7 +87,7 @@ class _BrokersScreenState extends State<BrokersScreen> {
     final fAddress = FocusNode();
     final fNotes = FocusNode();
 
-    void saveBroker(BuildContext dialogContext) {
+    void saveBroker(BuildContext dialogContext) async {
       if (nameController.text.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('برجاء إدخال إسم السمسار'), backgroundColor: Colors.red),
@@ -131,9 +131,13 @@ class _BrokersScreenState extends State<BrokersScreen> {
         });
       });
 
+      // الحفظ المحلي التلقائي + الرفع الفوري في الخلفية (Auto-Sync)
+      await LocalStorageService.saveLocally();
+      CloudSyncService.syncToCloud(isAuto: true);
+
       Navigator.pop(dialogContext);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم حفظ بيانات السمسار بنجاح'), backgroundColor: Colors.green),
+        const SnackBar(content: Text('تم حفظ ومزامنة بيانات السمسار سحابياً بنجاح'), backgroundColor: Colors.green),
       );
     }
 
@@ -154,7 +158,13 @@ class _BrokersScreenState extends State<BrokersScreen> {
                   textInputAction: TextInputAction.next,
                   onSubmitted: (_) => FocusScope.of(dialogContext).requestFocus(fPhone1),
                   style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(labelText: 'إسم السمسار *', border: OutlineInputBorder(), filled: true, fillColor: Color(0xFF252525)),
+                  decoration: const InputDecoration(
+                    labelText: 'إسم السمسار *',
+                    labelStyle: TextStyle(color: Colors.white70),
+                    border: OutlineInputBorder(),
+                    filled: true,
+                    fillColor: Color(0xFF252525),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -167,6 +177,7 @@ class _BrokersScreenState extends State<BrokersScreen> {
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
                     labelText: 'رقم التليفون 1 (11 رقماً)',
+                    labelStyle: const TextStyle(color: Colors.white70),
                     border: const OutlineInputBorder(),
                     filled: true,
                     fillColor: const Color(0xFF252525),
@@ -188,6 +199,7 @@ class _BrokersScreenState extends State<BrokersScreen> {
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
                     labelText: 'رقم التليفون 2 (11 رقماً)',
+                    labelStyle: const TextStyle(color: Colors.white70),
                     border: const OutlineInputBorder(),
                     filled: true,
                     fillColor: const Color(0xFF252525),
@@ -205,7 +217,13 @@ class _BrokersScreenState extends State<BrokersScreen> {
                   textInputAction: TextInputAction.next,
                   onSubmitted: (_) => FocusScope.of(dialogContext).requestFocus(fNotes),
                   style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(labelText: 'العنوان', border: OutlineInputBorder(), filled: true, fillColor: Color(0xFF252525)),
+                  decoration: const InputDecoration(
+                    labelText: 'العنوان',
+                    labelStyle: TextStyle(color: Colors.white70),
+                    border: OutlineInputBorder(),
+                    filled: true,
+                    fillColor: Color(0xFF252525),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -215,7 +233,13 @@ class _BrokersScreenState extends State<BrokersScreen> {
                   onSubmitted: (_) => saveBroker(dialogContext),
                   maxLines: 2,
                   style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(labelText: 'ملاحظات (اضغط Enter للحفظ)', border: OutlineInputBorder(), filled: true, fillColor: Color(0xFF252525)),
+                  decoration: const InputDecoration(
+                    labelText: 'ملاحظات (اضغط Enter للحفظ)',
+                    labelStyle: TextStyle(color: Colors.white70),
+                    border: OutlineInputBorder(),
+                    filled: true,
+                    fillColor: Color(0xFF252525),
+                  ),
                 ),
               ],
             ),
@@ -372,18 +396,6 @@ class _BrokersScreenState extends State<BrokersScreen> {
                       onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const CompletedOperationsScreen())),
                       child: const Text('العمليات', style: TextStyle(color: Colors.white, fontSize: 11)),
                     ),
-                    const SizedBox(width: 4),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF333333)),
-                      onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AccountsScreen())),
-                      child: const Text('الحسابات', style: TextStyle(color: Colors.white, fontSize: 11)),
-                    ),
-                    const SizedBox(width: 4),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF333333)),
-                      onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const GeneralReportScreen())),
-                      child: const Text('التقرير', style: TextStyle(color: Colors.white, fontSize: 11)),
-                    ),
                   ],
                 ),
               ),
@@ -464,12 +476,16 @@ class _BrokersScreenState extends State<BrokersScreen> {
                                       DataCell(
                                         IconButton(
                                           icon: const Icon(Icons.delete_forever, color: Colors.redAccent, size: 20),
-                                          onPressed: () {
+                                          onPressed: () async {
                                             setState(() {
                                               brokersList.removeAt(index);
                                             });
+                                            // الحفظ المحلي التلقائي + الرفع الفوري في الخلفية عند الحذف
+                                            await LocalStorageService.saveLocally();
+                                            CloudSyncService.syncToCloud(isAuto: true);
+
                                             ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(content: Text('تم حذف السمسار بنجاح'), backgroundColor: Colors.orange),
+                                              const SnackBar(content: Text('تم حذف السمسار وتحديث السحابة بنجاح'), backgroundColor: Colors.orange),
                                             );
                                           },
                                         ),
