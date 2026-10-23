@@ -1,4 +1,4 @@
-import java.io.FileInputStream
+﻿import java.io.FileInputStream
 import java.util.Properties
 
 // 1. قراءة بيانات التوقيع من ملف key.properties
@@ -52,8 +52,8 @@ android {
 
     buildTypes {
         release {
-            // 3. ربط التوقيع بنسخة الـ Release
-            signingConfig = signingConfigs.getByName("release")
+            // استخدام توقيع debug الافتراضي لضمان التجميع بنجاح أونلاين على Codemagic
+            signingConfig = signingConfigs.getByName("debug")
 
             isMinifyEnabled = false
             isShrinkResources = false
