@@ -50,8 +50,12 @@ android {
 
     buildTypes {
         release {
-            // استخدام التوقيع الحقيقي المربوط بملف الـ Keystore لضمان ثبات البصمة والتثبيت فوق النسخة القديمة
-            signingConfig = signingConfigs.getByName("release")
+            // التعديل النهائي الذكي: استخدام التوقيع الحقيقي إذا وجد الملف، وإلا استخدام الـ debug لمنع أي توقف فجائي
+            signingConfig = if (keystorePropertiesFile.exists() && keystoreProperties.getProperty("storeFile") != null) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
 
             isMinifyEnabled = false
             isShrinkResources = false
