@@ -1,7 +1,6 @@
 ﻿import java.io.FileInputStream
 import java.util.Properties
 
-// 1. قراءة بيانات التوقيع من ملف key.properties
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
 if (keystorePropertiesFile.exists()) {
@@ -30,13 +29,12 @@ android {
         }
     }
 
-    // 2. إعدادات شهادة التوقيع لتحديث التطبيق مباشرة فوق النسخة القديمة
     signingConfigs {
         create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String?
-            keyPassword = keystoreProperties["keyPassword"] as String?
-            storeFile = keystoreProperties["storeFile"]?.let { file(it) }
-            storePassword = keystoreProperties["storePassword"] as String?
+            keyAlias = keystoreProperties.getProperty("keyAlias")
+            keyPassword = keystoreProperties.getProperty("keyPassword")
+            storeFile = keystoreProperties.getProperty("storeFile")?.let { file(it) }
+            storePassword = keystoreProperties.getProperty("storePassword")
         }
     }
 
@@ -52,12 +50,8 @@ android {
 
     buildTypes {
         release {
-            // استخدام توقيع الـ release الحقيقي إذا كان موجوداً لضمان التثبيت فوق النسخة القديمة
-            signingConfig = if (keystorePropertiesFile.exists() && keystoreProperties["storeFile"] != null) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
-            }
+            // استخدام التوقيع الحقيقي المربوط بملف الـ Keystore لضمان ثبات البصمة والتثبيت فوق النسخة القديمة
+            signingConfig = signingConfigs.getByName("release")
 
             isMinifyEnabled = false
             isShrinkResources = false
@@ -72,6 +66,3 @@ flutter {
 dependencies {
     implementation("androidx.multidex:multidex:2.0.1")
 }
-```[cite: 7]
-
-احفظ الملف بـ `Ctrl + S`، وこのように رجعنا النسخة الكاملة بكامل صلاحياتها وإعداداتها السحابية وتوقيعها الصحيح!
